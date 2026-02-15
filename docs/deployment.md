@@ -9,7 +9,59 @@
 
 ---
 
-## 2. Frontend Configuration
+## 2. Enterprise Self-Hosting (Recommended)
+
+This stack uses **Nginx** as the traffic controller, serving the React frontend instantly while routing API requests to Django.
+
+**Stack:**
+*   **Web Server:** Nginx
+*   **App Server:** Gunicorn (Django)
+*   **Database:** PostgreSQL
+*   **Security/DNS:** Cloudflare
+
+### Nginx Configuration (`/etc/nginx/sites-available/thomian`)
+
+```nginx
+server {
+    server_name library.stthomas.edu; # Your Cloudflare Domain
+
+    # FRONTEND: Serve React Static Files
+    location / {
+        root /var/www/thomian-library/dist;
+        try_files $uri $uri/ /index.html; # SPA Routing
+        expires 1h;
+    }
+
+    # BACKEND: Proxy API to Django/Gunicorn
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # STATIC: Django Admin/Rest Framework Assets
+    location /static/ {
+        alias /var/www/thomian-library/backend/staticfiles/;
+    }
+}
+```
+
+### Environment Variables (`.env`)
+Ensure your backend `.env` file includes the trusted origins for Cloudflare:
+
+```bash
+ALLOWED_HOSTS=library.stthomas.edu,localhost
+CSRF_TRUSTED_ORIGINS=https://library.stthomas.edu
+DB_NAME=thomian_db
+DB_USER=postgres
+DB_PASSWORD=secret
+```
+
+---
+
+## 3. Frontend Configuration
 
 ### AI Vision Support
 To enable the "AI Auto-Map" and blueprint analysis features:
@@ -23,7 +75,7 @@ The **Mobile Scanner** and **AI Vision Uploads** strictly require a Secure Conte
 
 ---
 
-## 3. Hardware Configuration
+## 4. Hardware Configuration
 
 ### Zebra Printer Setup (Labels & Cards)
 The system generates two types of ZPL streams:
@@ -39,10 +91,3 @@ The system generates two types of ZPL streams:
 -   **Config:** HID Keyboard Emulation mode.
 -   **Suffix:** Ensure the scanner sends a Carriage Return (`CR` / `\n`) after every scan.
 -   **Inter-Character Delay:** Minimal (0ms) to ensure the high-speed listeners catch the full string.
-
-## 4. Multi-Floor Map Deployment
-When deploying a new library room:
-1.  Upload a high-resolution JPG/PNG blueprint in the **Map Layout** tab.
-2.  Use **AI Auto-Map** to detect potential shelving zones.
-3.  Manually calibrate the **Kiosk Station** by entering "Set Kiosk" mode and clicking the map at the physical kiosk's location.
-4.  **Save** to sync the spatial configuration to the Thomian Cloud.

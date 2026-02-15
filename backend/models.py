@@ -6,7 +6,6 @@ from django.utils import timezone
 class SystemConfiguration(models.Model):
     """
     Global library settings including branding and spatial layout.
-    Designed as a single-row configuration table.
     """
     logo = models.TextField(blank=True, null=True) # Base64 Logo String
     map_data = JSONField(default=dict) # Stores { levels: [], shelves: [] }
@@ -30,15 +29,25 @@ class Book(models.Model):
     ddc_code = models.CharField(max_length=20, db_index=True)
     call_number = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     barcode_id = models.CharField(max_length=50, unique=True, db_index=True, null=True, blank=True)
-    shelf_location = models.CharField(max_length=50, blank=True, null=True)
-    
+    shelf_location = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     cover_url = models.URLField(max_length=500, blank=True, null=True)
-    hold_expires_at = models.DateTimeField(null=True, blank=True)
+    
+    # Professional ILS / Koha-style Fields
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=25.00) # Replacement Cost
+    series = models.CharField(max_length=255, blank=True, null=True)
+    edition = models.CharField(max_length=100, blank=True, null=True)
+    language = models.CharField(max_length=50, default='English')
+    pages = models.IntegerField(null=True, blank=True)
+    vendor = models.CharField(max_length=255, blank=True, null=True)
+    acquisition_date = models.DateField(null=True, blank=True)
+    summary = models.TextField(blank=True, null=True)
+    
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='AVAILABLE')
+    hold_expires_at = models.DateTimeField(null=True, blank=True)
     marc_metadata = JSONField(default=dict)
     material_type = models.CharField(max_length=50, default='REGULAR')
     
-    queue_length = models.IntegerField(default=0)
+    queue_length = models.IntegerField(default=0, null=True, blank=True)
     last_inventoried = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     loan_count = models.IntegerField(default=0)
@@ -71,8 +80,12 @@ class Patron(models.Model):
     student_id = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=255)
     patron_group = models.CharField(max_length=20, choices=GROUP_CHOICES)
+    class_name = models.CharField(max_length=100, blank=True, null=True) # Added field
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     is_blocked = models.BooleanField(default=False)
-    fines = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
+    fines = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     def __str__(self):
         return f"{self.full_name} ({self.student_id})"
@@ -90,55 +103,10 @@ class Transaction(models.Model):
     METHOD_CHOICES = [('CASH', 'Cash'), ('SYSTEM', 'System')]
 
     patron = models.ForeignKey(Patron, on_delete=models.CASCADE, related_name='transactions')
-    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
     type = models.CharField(max_length=30, choices=TYPE_CHOICES)
     method = models.CharField(max_length=10, choices=METHOD_CHOICES)
     timestamp = models.DateTimeField(default=timezone.now)
-    librarian_id = models.CharField(max_length=50) # Username or ID
+    librarian_id = models.CharField(max_length=50) 
     note = models.TextField(blank=True, null=True)
     book_title = models.CharField(max_length=255, blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.type} - {self.patron.student_id} - ${self.amount}"
-
-class Hold(models.Model):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='holds')
-    patron = models.ForeignKey(Patron, on_delete=models.CASCADE, related_name='holds')
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=False)
-    expires_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ['created_at']
-
-class CirculationRule(models.Model):
-    patron_group = models.CharField(max_length=20)
-    material_type = models.CharField(max_length=20)
-    loan_days = models.IntegerField(default=14)
-    max_items = models.IntegerField(default=3)
-    fine_per_day = models.DecimalField(max_digits=4, decimal_places=2, default=0.50)
-
-class Loan(models.Model):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
-    patron = models.ForeignKey(Patron, on_delete=models.CASCADE)
-    issued_at = models.DateTimeField(auto_now_add=True)
-    due_date = models.DateTimeField()
-    returned_at = models.DateTimeField(null=True, blank=True)
-
-class LibraryEvent(models.Model):
-    TYPE_CHOICES = [('HOLIDAY', 'Holiday'), ('EXAM', 'Exam'), ('WORKSHOP', 'Workshop'), ('CLUB', 'Club'), ('GENERAL', 'General')]
-    title = models.CharField(max_length=200)
-    date = models.DateField()
-    event_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    description = models.TextField(blank=True)
-
-class SystemAlert(models.Model):
-    ALERT_TYPES = [('HELP', 'Help Request'), ('SECURITY', 'Security Alert')]
-    type = models.CharField(max_length=20, choices=ALERT_TYPES)
-    message = models.CharField(max_length=255)
-    location = models.CharField(max_length=100)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    resolved = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ['-timestamp']

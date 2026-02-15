@@ -1,6 +1,6 @@
 
 export type ViewMode = 'KIOSK' | 'ADMIN';
-export type AdminTab = 'CIRCULATION' | 'CATALOG' | 'PATRONS' | 'MATRIX' | 'MAP' | 'CALENDAR' | 'REPORTS' | 'STOCKTAKE' | 'HELP';
+export type AdminTab = 'CIRCULATION' | 'CATALOG' | 'PATRONS' | 'MATRIX' | 'MAP' | 'CALENDAR' | 'REPORTS' | 'HELP' | 'SETTINGS' | 'PROFILE';
 
 export type PatronGroup = 'STUDENT' | 'TEACHER' | 'LIBRARIAN' | 'ADMINISTRATOR';
 
@@ -9,6 +9,9 @@ export interface AuthUser {
     username: string;
     full_name: string;
     role: 'LIBRARIAN' | 'ADMINISTRATOR';
+    email?: string;
+    phone?: string;
+    avatar_color?: string;
 }
 
 export interface Transaction {
@@ -38,8 +41,18 @@ export interface Book {
   marc_data?: Record<string, any>;
   queue_length?: number;
   last_inventoried?: string;
-  value?: number;
-  material_type?: 'REGULAR' | 'REFERENCE' | 'PERIODICAL' | 'MEDIA';
+  
+  // Professional ILS Fields
+  value: number; // Price/Replacement Cost
+  edition?: string;
+  series?: string;
+  language?: string;
+  pages?: number;
+  vendor?: string;
+  acquisition_date?: string;
+  summary?: string;
+  
+  material_type: 'REGULAR' | 'REFERENCE' | 'PERIODICAL' | 'MEDIA';
   course_reserve?: string;
   created_at?: string;
   loan_count?: number;
@@ -49,9 +62,12 @@ export interface Patron {
   student_id: string;
   full_name: string;
   patron_group: PatronGroup;
+  class_name?: string;
   is_blocked: boolean;
   fines: number;
   total_paid?: number;
+  email?: string;
+  phone?: string;
 }
 
 export interface MapConfig {

@@ -9,10 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-key-for-dev-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# Allow Cloudflare Tunnel domains and Localhost
-ALLOWED_HOSTS = ['*'] 
+# ALLOWED_HOSTS: Add your custom domain here (e.g., 'library.stthomas.edu')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -111,6 +111,17 @@ REST_FRAMEWORK = {
     'MAX_PAGE_SIZE': 100
 }
 
-# CORS: Allow React App (Cloud or Local) to hit Backend
+# ==========================================
+# PROXY & SECURITY CONFIGURATION
+# ==========================================
+
+# CORS: Allow React App to hit Backend
 CORS_ALLOW_ALL_ORIGINS = True 
 CORS_ALLOW_CREDENTIALS = True
+
+# TRUSTED ORIGINS: Required for Nginx/Cloudflare
+# Syntax: https://library.yourschool.edu
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
+
+# SSL PROXY: Trust Nginx/Cloudflare to handle SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

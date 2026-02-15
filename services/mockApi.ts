@@ -13,11 +13,14 @@ const STORAGE_KEY_USER = "thomian_user_profile";
 const STORAGE_KEY_TOKEN = "thomian_auth_token";
 const STORAGE_KEY_LAN_URL = "thomian_lan_url";
 
+// EMBEDDED LOGO
+const SCHOOL_CREST_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="50%" stop-color="black"/><stop offset="50%" stop-color="%23D6001C"/></linearGradient></defs><path d="M250 50Q125 70 50 50L50 280C50 400 250 480 250 480C250 480 450 400 450 280L450 50Q375 70 250 50Z" fill="url(%23g1)"/><g transform="translate(90,80) scale(0.6)"><path d="M50 100L10 100L20 40L50 0L80 40L90 100Z" fill="%23FFD700" stroke="white" stroke-width="2"/></g><g transform="translate(300,80) scale(0.6)"><path d="M10 30L80 30L100 10L110 20L90 40C90 60 70 70 40 70L20 70C10 70 0 60 10 30Z" fill="%23FFD700"/><circle cx="30" cy="15" r="10" fill="orange"/></g><g transform="translate(250,240) rotate(-30)"><rect x="-80" y="-10" width="160" height="20" fill="%23FFD700"/><rect x="60" y="-10" width="20" height="80" fill="%23FFD700"/></g><g transform="translate(20,430)"><path d="M20 50Q230 130 440 50L440 90Q230 170 20 90Z" fill="%23FFD700" stroke="black" stroke-width="2"/><text x="230" y="105" font-family="sans-serif" font-weight="900" font-size="30" text-anchor="middle" fill="black">AIM HIGHER</text></g></svg>`;
+
 const INITIAL_BOOKS: Book[] = [
-    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: '813.52', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', loan_count: 45, created_at: new Date().toISOString() },
-    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'B-3', title: 'World History', author: 'William J. Duiker', isbn: '9781305951129', barcode_id: '9001', ddc_code: '909', shelf_location: 'Shelf D', status: 'AVAILABLE', material_type: 'REGULAR', loan_count: 89, created_at: new Date().toISOString() },
-    { id: 'B-4', title: 'Philosophy 101', author: 'Paul Kleinman', isbn: '9781440567674', barcode_id: '0001', ddc_code: '100', shelf_location: 'Shelf A', status: 'AVAILABLE', material_type: 'REGULAR', loan_count: 5, created_at: new Date().toISOString() },
+    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: '813.52', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', value: 15.99, language: 'English', pages: 180, vendor: 'Scribner', loan_count: 45, created_at: new Date().toISOString() },
+    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', value: 85.00, edition: '2nd', pages: 450, loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'B-3', title: 'World History', author: 'William J. Duiker', isbn: '9781305951129', barcode_id: '9001', ddc_code: '909', shelf_location: 'Shelf D', status: 'AVAILABLE', material_type: 'REGULAR', value: 120.00, vendor: 'Cengage Learning', loan_count: 89, created_at: new Date().toISOString() },
+    { id: 'B-4', title: 'Philosophy 101', author: 'Paul Kleinman', isbn: '9781440567674', barcode_id: '0001', ddc_code: '100', shelf_location: 'Shelf A', status: 'AVAILABLE', material_type: 'REGULAR', value: 14.50, pages: 256, loan_count: 5, created_at: new Date().toISOString() },
 ];
 
 const INITIAL_RULES: CirculationRule[] = [
@@ -26,7 +29,6 @@ const INITIAL_RULES: CirculationRule[] = [
     { id: 'R-3', patron_group: 'TEACHER', material_type: 'REGULAR', loan_days: 30, max_items: 20, fine_per_day: 0.10 },
 ];
 
-// Helper to get all books
 export const mockGetBooks = async (): Promise<Book[]> => {
     const stored = localStorage.getItem(STORAGE_KEY_BOOKS);
     if (stored) return JSON.parse(stored);
@@ -34,17 +36,110 @@ export const mockGetBooks = async (): Promise<Book[]> => {
     return INITIAL_BOOKS;
 };
 
-// Helper to record a new financial transaction
+export const mockAddBook = async (book: Partial<Book>): Promise<Book> => {
+    const books = await mockGetBooks();
+    const newBook = { 
+        ...book, 
+        id: `B-${Date.now()}`, 
+        barcode_id: book.barcode_id || `BC-${Date.now().toString().slice(-6)}`, 
+        created_at: new Date().toISOString(),
+        loan_count: 0,
+        status: book.status || 'AVAILABLE',
+        material_type: book.material_type || 'REGULAR'
+    } as Book;
+    books.unshift(newBook);
+    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
+    return newBook;
+};
+
+export const mockUpdateBook = async (book: Book): Promise<Book> => {
+    const books = await mockGetBooks();
+    const updated = books.map(b => b.id === book.id ? book : b);
+    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(updated));
+    return book;
+};
+
+export const mockDeleteBook = async (id: string): Promise<void> => {
+    const books = await mockGetBooks();
+    const filtered = books.filter(b => b.id !== id);
+    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(filtered));
+};
+
+export const exportSystemData = async (): Promise<string> => {
+    const data = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        books: JSON.parse(localStorage.getItem(STORAGE_KEY_BOOKS) || '[]'),
+        patrons: JSON.parse(localStorage.getItem(STORAGE_KEY_PATRONS) || '[]'),
+        transactions: JSON.parse(localStorage.getItem(STORAGE_KEY_TRANSACTIONS) || '[]'),
+        events: JSON.parse(localStorage.getItem(STORAGE_KEY_EVENTS) || '[]'),
+        rules: JSON.parse(localStorage.getItem(STORAGE_KEY_RULES) || '[]'),
+        mapConfig: JSON.parse(localStorage.getItem(STORAGE_KEY_MAP) || 'null'),
+    };
+    return JSON.stringify(data, null, 2);
+};
+
+export const importSystemData = async (jsonString: string): Promise<boolean> => {
+    try {
+        const data = JSON.parse(jsonString);
+        if (!data.books || !data.patrons) throw new Error("Invalid backup format");
+        if (data.books) localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(data.books));
+        if (data.patrons) localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(data.patrons));
+        if (data.transactions) localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(data.transactions));
+        if (data.events) localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(data.events));
+        if (data.rules) localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(data.rules));
+        if (data.mapConfig) localStorage.setItem(STORAGE_KEY_MAP, JSON.stringify(data.mapConfig));
+        return true;
+    } catch (e) {
+        console.error("Import failed:", e);
+        return false;
+    }
+};
+
+export const performFactoryReset = async (): Promise<void> => {
+    const keysToRemove = [STORAGE_KEY_BOOKS, STORAGE_KEY_TRANSACTIONS, STORAGE_KEY_PATRONS, STORAGE_KEY_EVENTS, STORAGE_KEY_RULES, STORAGE_KEY_ALERTS, STORAGE_KEY_MAP];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    await new Promise(r => setTimeout(r, 500));
+};
+
+export const generateBookZpl = (book: Partial<Book>): string => {
+    const authorShort = (book.author || 'UNK').slice(0, 3).toUpperCase();
+    const ddc = book.ddc_code || '000.00';
+    return `^XA^FO30,30^A0N,30,30^FD${ddc}^FS^FO30,100^A0N,25,25^FD${authorShort}^FS^FO150,30^BCN,60,Y,N,N^FD${book.barcode_id || 'TEMP-ID'}^FS^XZ`;
+};
+
+export const generatePatronZpl = (patron: Patron): string => {
+    return `^XA^CI28^FO40,40^A0N,35,35^FDSt. Thomas Library^FS^FO40,160^A0N,50,50^FD${patron.full_name}^FS^FO40,300^BCN,100,Y,N,N^FD${patron.student_id}^FS^XZ`;
+};
+
+export const mockPrintBookLabel = async (book: Book): Promise<void> => {
+    const zpl = generateBookZpl(book);
+    console.log("%c ZPL Spine Label Stream Generated:", "color: #2563eb; font-weight: bold;");
+    console.log(zpl);
+    await new Promise(r => setTimeout(r, 800));
+};
+
+export const mockPrintPatronCard = async (patron: Patron): Promise<void> => {
+    const zpl = generatePatronZpl(patron);
+    console.log("%c ZPL ID Card Stream Generated:", "color: #16a34a; font-weight: bold;");
+    console.log(zpl);
+    await new Promise(r => setTimeout(r, 1200));
+};
+
+export const mockBulkPrintPatrons = async (patrons: Patron[]): Promise<void> => {
+    console.log(`%c EXECUTING BATCH PRINT: ${patrons.length} PATRON CARDS`, "color: #16a34a; font-weight: 900; background: #f0fdf4; padding: 4px;");
+    await new Promise(r => setTimeout(r, 500 * patrons.length));
+};
+
+export const mockBulkPrintLabels = async (books: Partial<Book>[]): Promise<void> => {
+    console.log(`%c EXECUTING BATCH PRINT: ${books.length} SPINE LABELS`, "color: #2563eb; font-weight: 900; background: #eff6ff; padding: 4px;");
+    await new Promise(r => setTimeout(r, 300 * books.length));
+};
+
 export const mockRecordTransaction = async (transaction: Omit<Transaction, 'id' | 'timestamp'>): Promise<Transaction> => {
     const stored = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
     const transactions: Transaction[] = stored ? JSON.parse(stored) : [];
-    
-    const newTransaction: Transaction = {
-        ...transaction,
-        id: `TXN-${Date.now()}`,
-        timestamp: new Date().toISOString()
-    };
-    
+    const newTransaction: Transaction = { ...transaction, id: `TXN-${Date.now()}`, timestamp: new Date().toISOString() };
     transactions.unshift(newTransaction);
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
     return newTransaction;
@@ -63,34 +158,20 @@ export const mockGetTransactionsByPatron = async (patronId: string): Promise<Tra
 export const mockGetFinancialSummary = async () => {
     const txns = await mockGetTransactions();
     return txns.reduce((acc, t) => {
-        if (t.type === 'FINE_PAYMENT' || t.type === 'REPLACEMENT_PAYMENT') {
-            acc.totalCollected += t.amount;
-        } else if (t.type === 'FINE_ASSESSMENT' || t.type === 'MANUAL_ADJUSTMENT') {
-            acc.totalFinesAssessed += t.amount;
-        } else if (t.type === 'REPLACEMENT_ASSESSMENT') {
-            acc.totalReplacementsAssessed += t.amount;
-        } else if (t.type === 'DAMAGE_ASSESSMENT') {
-            acc.totalDamageAssessed += t.amount;
-        } else if (t.type === 'WAIVE') {
-            acc.totalWaived += t.amount;
-        }
+        if (t.type === 'FINE_PAYMENT' || t.type === 'REPLACEMENT_PAYMENT') acc.totalCollected += t.amount;
+        else if (t.type === 'FINE_ASSESSMENT' || t.type === 'MANUAL_ADJUSTMENT') acc.totalFinesAssessed += t.amount;
+        else if (t.type === 'REPLACEMENT_ASSESSMENT') acc.totalReplacementsAssessed += t.amount;
+        else if (t.type === 'WAIVE') acc.totalWaived += t.amount;
         return acc;
-    }, { 
-        totalCollected: 0, 
-        totalFinesAssessed: 0, 
-        totalReplacementsAssessed: 0, 
-        totalDamageAssessed: 0, 
-        totalWaived: 0 
-    });
+    }, { totalCollected: 0, totalFinesAssessed: 0, totalReplacementsAssessed: 0, totalDamageAssessed: 0, totalWaived: 0 });
 };
 
 export const mockGetPatrons = async (): Promise<Patron[]> => {
     const stored = localStorage.getItem(STORAGE_KEY_PATRONS);
     if (stored) return JSON.parse(stored);
-    
     const defaults: Patron[] = [
-        { student_id: 'ST-2024-001', full_name: 'John Doe', patron_group: 'STUDENT', is_blocked: false, fines: 0 },
-        { student_id: 'ST-2024-002', full_name: 'Jane Smith', patron_group: 'STUDENT', is_blocked: true, fines: 45.00 },
+        { student_id: 'ST-2024-001', full_name: 'John Doe', patron_group: 'STUDENT', class_name: 'Grade 10-A', is_blocked: false, fines: 0, email: 'j.doe@stthomas.edu', phone: '+1 (555) 001-2233' },
+        { student_id: 'ST-2024-002', full_name: 'Jane Smith', patron_group: 'STUDENT', class_name: 'Grade 12-B', is_blocked: true, fines: 45.00, email: 'j.smith@stthomas.edu', phone: '+1 (555) 001-4455' },
     ];
     localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(defaults));
     return defaults;
@@ -101,6 +182,13 @@ export const mockGetPatronById = async (id: string): Promise<Patron | null> => {
     return patrons.find(p => p.student_id === id) || null;
 };
 
+export const mockAddPatron = async (patron: Patron): Promise<Patron> => {
+    const patrons = await mockGetPatrons();
+    patrons.push(patron);
+    localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(patrons));
+    return patron;
+};
+
 export const mockUpdatePatron = async (patron: Patron): Promise<Patron> => {
     const patrons = await mockGetPatrons();
     const updated = patrons.map(p => p.student_id === patron.student_id ? patron : p);
@@ -108,24 +196,22 @@ export const mockUpdatePatron = async (patron: Patron): Promise<Patron> => {
     return patron;
 };
 
+export const mockDeletePatron = async (id: string): Promise<void> => {
+    const patrons = await mockGetPatrons();
+    const filtered = patrons.filter(p => p.student_id !== id);
+    localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(filtered));
+};
+
 export const mockSearchBooks = async (query: string): Promise<Book[]> => {
     const books = await mockGetBooks();
     const q = query.toLowerCase();
-    return books.filter(b => 
-        b.title.toLowerCase().includes(q) || 
-        b.author.toLowerCase().includes(q) || 
-        b.isbn.includes(q) || 
-        b.barcode_id.includes(q)
-    );
+    return books.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.isbn.includes(q) || b.barcode_id.includes(q));
 };
 
 export const mockGetEvents = async (): Promise<LibraryEvent[]> => {
     const stored = localStorage.getItem(STORAGE_KEY_EVENTS);
     if (stored) return JSON.parse(stored);
-    const defaults: LibraryEvent[] = [
-        { id: 'E-1', title: 'Winter Break', date: '2024-12-20', type: 'HOLIDAY', description: 'Library Closed' },
-        { id: 'E-2', title: 'Coding Workshop', date: '2024-11-15', type: 'WORKSHOP', description: 'Intro to React' }
-    ];
+    const defaults: LibraryEvent[] = [{ id: 'E-1', title: 'Winter Break', date: '2024-12-20', type: 'HOLIDAY', description: 'Library Closed' }];
     localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(defaults));
     return defaults;
 };
@@ -140,18 +226,15 @@ export const mockAddEvent = async (event: Omit<LibraryEvent, 'id'>): Promise<Lib
 
 export const mockPlaceHold = async (bookId: string, patronId: string): Promise<void> => {
     const books = await mockGetBooks();
-    const updated = books.map(b => b.id === bookId ? { ...b, status: 'HELD' as const } : b);
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 48);
+    const updated = books.map(b => b.id === bookId ? { ...b, status: 'HELD' as const, hold_expires_at: expires.toISOString() } : b);
     localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(updated));
 };
 
 export const mockTriggerHelpAlert = async (location: string): Promise<void> => {
     const alerts = await mockGetActiveAlerts();
-    alerts.push({
-        id: `A-${Date.now()}`,
-        message: "Assistance Requested at Kiosk",
-        location,
-        timestamp: new Date().toISOString()
-    });
+    alerts.push({ id: `A-${Date.now()}`, message: "Assistance Requested at Kiosk", location, timestamp: new Date().toISOString() });
     localStorage.setItem(STORAGE_KEY_ALERTS, JSON.stringify(alerts));
 };
 
@@ -165,7 +248,6 @@ export const mockGetTrendingBooks = async (): Promise<Book[]> => {
     return [...books].sort((a, b) => (b.loan_count || 0) - (a.loan_count || 0)).slice(0, 4);
 };
 
-// AI Vision for Blueprint Analysis using Gemini
 export const aiAnalyzeBlueprint = async (imageBase64: string, levelId: string): Promise<ShelfDefinition[]> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
@@ -174,7 +256,7 @@ export const aiAnalyzeBlueprint = async (imageBase64: string, levelId: string): 
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: imageBase64.split(',')[1] || imageBase64 } },
-                    { text: "Analyze this library floor plan and identify shelving units. Return a JSON array of objects with: label, x, y, width, height, minDDC, maxDDC. Coordinates should be relative to a 1000x600 viewBox." }
+                    { text: "Analyze this library floor plan and identify shelving units. Return a JSON array." }
                 ]
             },
             config: {
@@ -197,20 +279,10 @@ export const aiAnalyzeBlueprint = async (imageBase64: string, levelId: string): 
                 }
             }
         });
-
         const data = JSON.parse(response.text || '[]');
-        return data.map((s: any) => ({
-            ...s,
-            id: `shelf_${Math.random().toString(36).substr(2, 9)}`,
-            description: `Automated detection for ${s.label}`,
-            levelId
-        }));
+        return data.map((s: any) => ({ ...s, id: `shelf_${Math.random().toString(36).substr(2, 9)}`, levelId }));
     } catch (e: any) {
-        console.error("AI Analysis failed", e);
-        // Check for Quota Exhaustion errors (429)
-        if (e.status === 429 || e.toString().includes('429') || e.toString().includes('quota')) {
-             throw new Error("QUOTA_EXHAUSTED");
-        }
+        if (e.status === 429) throw new Error("QUOTA_EXHAUSTED");
         return [];
     }
 };
@@ -225,22 +297,13 @@ export const simulateCatalogWaterfall = async (isbn: string, onUpdate: (source: 
         return local;
     }
     onUpdate('LOCAL', 'NOT_FOUND');
-
     onUpdate('ZEBRA_LOC', 'PENDING');
     await new Promise(r => setTimeout(r, 800));
     onUpdate('ZEBRA_LOC', 'NOT_FOUND');
-
     onUpdate('OPEN_LIBRARY', 'PENDING');
     await new Promise(r => setTimeout(r, 1000));
     onUpdate('OPEN_LIBRARY', 'FOUND');
-    return {
-        title: 'Acquired via Global API',
-        author: 'Auto-Resolved Author',
-        isbn: isbn,
-        ddc_code: '000.00',
-        material_type: 'REGULAR',
-        status: 'AVAILABLE'
-    };
+    return { title: 'Acquired via Global API', author: 'Auto-Resolved Author', isbn: isbn, ddc_code: '000.00', material_type: 'REGULAR', status: 'AVAILABLE', value: 25.00, language: 'English' };
 };
 
 export const mockGetBooksByShelf = async (shelf: string): Promise<Book[]> => {
@@ -251,21 +314,6 @@ export const mockGetBooksByShelf = async (shelf: string): Promise<Book[]> => {
 export const mockGetBookByBarcode = async (barcode: string): Promise<Book | null> => {
     const books = await mockGetBooks();
     return books.find(b => b.barcode_id === barcode) || null;
-};
-
-export const mockAddBook = async (book: Partial<Book>): Promise<Book> => {
-    const books = await mockGetBooks();
-    const newBook = { ...book, id: `B-${Date.now()}`, barcode_id: `BC-${Date.now()}`, created_at: new Date().toISOString() } as Book;
-    books.push(newBook);
-    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
-    return newBook;
-};
-
-export const mockUpdateBook = async (book: Book): Promise<Book> => {
-    const books = await mockGetBooks();
-    const updated = books.map(b => b.id === book.id ? book : b);
-    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(updated));
-    return book;
 };
 
 export const mockGetCirculationRules = async (): Promise<CirculationRule[]> => {
@@ -313,11 +361,7 @@ export const mockProcessReturn = async (barcode: string): Promise<CheckInResult>
     if (!book) throw new Error("Book not found");
     const updatedBook = { ...book, status: 'AVAILABLE' as const };
     await mockUpdateBook(updatedBook);
-    return {
-        book: updatedBook,
-        fine_amount: 0,
-        days_overdue: 0
-    };
+    return { book: updatedBook, fine_amount: 0, days_overdue: 0 };
 };
 
 export const mockCheckoutBooks = async (patronId: string, barcodes: string[]): Promise<CheckoutResult> => {
@@ -331,33 +375,29 @@ export const mockGetSystemStats = async (): Promise<SystemStats> => {
     const books = await mockGetBooks();
     return {
         totalItems: books.length,
-        totalValue: books.length * 25.00,
+        totalValue: books.reduce((acc, b) => acc + (b.value || 0), 0),
         activeLoans: books.filter(b => b.status === 'LOANED').length,
         overdueLoans: 0,
         lostItems: books.filter(b => b.status === 'LOST').length,
-        itemsByShelf: { 'Shelf A': 1, 'Shelf B': 1, 'Shelf C': 1, 'Shelf D': 1 },
-        itemsByStatus: { 'AVAILABLE': 3, 'LOANED': 1 }
+        itemsByShelf: { 'Shelf A': 1, 'Shelf B': 1 },
+        itemsByStatus: { 'AVAILABLE': 3 }
     };
 };
 
-export const mockGetOverdueItems = async (): Promise<OverdueReportItem[]> => {
-    return [];
-};
+export const mockGetOverdueItems = async (): Promise<OverdueReportItem[]> => [];
 
 export const mockLogin = async (username: string, password: string): Promise<AuthUser | null> => {
-    // Explicit Admin Credentials
     if (username === 'admin' && password === 'admin123') {
-        const user: AuthUser = { 
-            id: 'U-ADMIN-001', 
-            username: 'admin', 
-            full_name: 'System Administrator', 
-            role: 'ADMINISTRATOR' 
-        };
+        const user: AuthUser = { id: 'U-1', username: 'admin', full_name: 'Admin', role: 'ADMINISTRATOR', avatar_color: 'bg-slate-900' };
         localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-        localStorage.setItem(STORAGE_KEY_TOKEN, "thomian-session-secure-token-12345");
+        localStorage.setItem(STORAGE_KEY_TOKEN, "token");
         return user;
     }
     return null;
+};
+
+export const mockUpdateAuthUser = async (user: AuthUser): Promise<void> => {
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
 };
 
 export const getLanUrl = () => localStorage.getItem(STORAGE_KEY_LAN_URL) || "http://localhost:8000";
@@ -368,13 +408,9 @@ export const mockGetMapConfig = async (): Promise<MapConfig> => {
     if (stored) return JSON.parse(stored);
     const defaults: MapConfig = {
         lastUpdated: new Date().toISOString(),
+        logo: SCHOOL_CREST_SVG,
         levels: [{ id: 'lvl_1', name: 'Main Hall', stationX: 500, stationY: 550 }],
-        shelves: [
-            { id: 's1', label: 'Shelf A', description: '000-299', minDDC: 0, maxDDC: 299, x: 100, y: 100, width: 200, height: 100, levelId: 'lvl_1' },
-            { id: 's2', label: 'Shelf B', description: '300-599', minDDC: 300, maxDDC: 599, x: 400, y: 100, width: 200, height: 100, levelId: 'lvl_1' },
-            { id: 's3', label: 'Shelf C', description: '600-899', minDDC: 600, maxDDC: 899, x: 100, y: 300, width: 200, height: 100, levelId: 'lvl_1' },
-            { id: 's4', label: 'Shelf D', description: '900-999', minDDC: 900, maxDDC: 999, x: 400, y: 300, width: 200, height: 100, levelId: 'lvl_1' },
-        ]
+        shelves: []
     };
     localStorage.setItem(STORAGE_KEY_MAP, JSON.stringify(defaults));
     return defaults;
@@ -387,8 +423,6 @@ export const mockSaveMapConfig = async (config: MapConfig): Promise<void> => {
 export const mockCheckSession = async (): Promise<AuthUser | null> => {
     const stored = localStorage.getItem(STORAGE_KEY_USER);
     const token = localStorage.getItem(STORAGE_KEY_TOKEN);
-    if (stored && token) {
-        return JSON.parse(stored);
-    }
+    if (stored && token) return JSON.parse(stored);
     return null;
 };

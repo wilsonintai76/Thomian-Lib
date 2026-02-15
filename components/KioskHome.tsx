@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, BookOpen, MapPin, X, Calendar, Clock, ArrowRight, GraduationCap, Users, Lightbulb, UserCheck, Bell, Sparkles, ImageOff, CheckCircle, Layers, LogIn, History, CreditCard, RefreshCw, LogOut, TrendingUp } from 'lucide-react';
-import { mockSearchBooks, mockGetEvents, mockPlaceHold, mockTriggerHelpAlert, mockGetNewArrivals, mockGetTrendingBooks, mockGetMapConfig, mockGetPatronById } from '../services/mockApi';
-import { Book, LibraryEvent, MapConfig, Patron, Loan } from '../types';
+/* Added Settings and LogOut to lucide-react imports to fix missing icon errors */
+import { Search, X, LogIn, RefreshCw, Sparkles, ImageOff, History, BookOpen, Bookmark, Clock, Calendar, Bell, Phone, Mail, Save, Loader2, FileText, Banknote, UserCheck, TrendingUp, CalendarOff, GraduationCap, Lightbulb, Users, Settings, LogOut } from 'lucide-react';
+import { mockSearchBooks, mockGetEvents, mockPlaceHold, mockTriggerHelpAlert, mockGetNewArrivals, mockGetTrendingBooks, mockGetMapConfig, mockGetPatronById, mockUpdatePatron, mockGetTransactionsByPatron } from '../services/mockApi';
+import { Book, LibraryEvent, MapConfig, Patron, Loan, Transaction } from '../types';
 import WayfinderMap from './WayfinderMap';
+import LibraryAssistant from './LibraryAssistant';
+import PatronPortal from './kiosk/PatronPortal';
 
 const KioskHome: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -18,12 +21,22 @@ const KioskHome: React.FC = () => {
   const [trending, setTrending] = useState<Book[]>([]);
   const [helpStatus, setHelpStatus] = useState<'IDLE' | 'REQUESTING' | 'SUCCESS'>('IDLE');
 
-  // Patron Self-Service State
   const [activePatron, setActivePatron] = useState<Patron | null>(null);
   const [patronLoans, setPatronLoans] = useState<Loan[]>([]);
   const [showAccountLogin, setShowAccountLogin] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [patronHistory, setPatronHistory] = useState<Transaction[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [holdStudentId, setHoldStudentId] = useState('');
+  const [isPlacingHold, setIsPlacingHold] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const mapSectionRef = useRef<HTMLDivElement>(null);
@@ -61,16 +74,62 @@ const KioskHome: React.FC = () => {
       const patron = await mockGetPatronById(loginId);
       if (patron) {
           setActivePatron(patron);
-          // Mock fetching loans for this patron
+          setEditName(patron.full_name);
+          setEditEmail(patron.email || '');
+          setEditPhone(patron.phone || '');
           setPatronLoans([
               { id: 'L-1', book_id: 'B-1', patron_id: patron.student_id, issued_at: '2023-10-01', due_date: '2023-10-15', renewal_count: 0, book_title: 'Introduction to Physics' }
           ]);
           setShowAccountLogin(false);
           setLoginId('');
-      } else {
-          alert("Student ID not recognized.");
-      }
+      } else { alert("Student ID not recognized."); }
       setIsLoggingIn(false);
+  };
+
+  const handleViewHistory = async () => {
+      if (!activePatron) return;
+      setIsHistoryLoading(true);
+      setShowHistoryModal(true);
+      try {
+          const history = await mockGetTransactionsByPatron(activePatron.student_id);
+          setPatronHistory(history);
+      } finally { setIsHistoryLoading(false); }
+  };
+
+  const handleUpdateProfile = async () => {
+      if (!activePatron || !editName.trim()) return;
+      setIsUpdatingProfile(true);
+      try {
+          const updated = { ...activePatron, full_name: editName.trim(), email: editEmail.trim(), phone: editPhone.trim() };
+          await mockUpdatePatron(updated);
+          setActivePatron(updated);
+          setShowProfileEdit(false);
+          alert("Profile updated successfully!");
+      } finally { setIsUpdatingProfile(false); }
+  };
+
+  const initiateHold = () => {
+    if (activePatron) processHold(activePatron.student_id);
+    else setShowHoldModal(true);
+  };
+
+  const processHold = async (studentId: string) => {
+      if (!selectedBook) return;
+      setIsPlacingHold(true);
+      if (!activePatron) {
+         const patron = await mockGetPatronById(studentId);
+         if (!patron) { alert("Student ID not recognized."); setIsPlacingHold(false); return; }
+         if (patron.is_blocked) { alert("Account Blocked: Visit desk to clear fines."); setIsPlacingHold(false); return; }
+      }
+      await mockPlaceHold(selectedBook.id, studentId);
+      alert(`Success! "${selectedBook.title}" has been reserved.`);
+      if (selectedBook) {
+          setSelectedBook({ ...selectedBook, status: 'HELD' });
+          setResults(prev => prev.map(b => b.id === selectedBook.id ? { ...b, status: 'HELD' } : b));
+      }
+      setIsPlacingHold(false);
+      setShowHoldModal(false);
+      setHoldStudentId('');
   };
 
   const handleLibrarianCall = async () => {
@@ -81,259 +140,110 @@ const KioskHome: React.FC = () => {
       setTimeout(() => setHelpStatus('IDLE'), 4000);
   };
 
-  const BookPosterCard: React.FC<{ book: Book, isNew?: boolean }> = ({ book, isNew }) => (
+  const BookPosterCard: React.FC<{ book: Book }> = ({ book }) => (
       <div onClick={() => selectBook(book)} className="flex-none w-36 md:w-44 group cursor-pointer snap-start">
           <div className="relative aspect-[2/3] mb-3 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all">
-             {book.cover_url ? (
-                 <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
-             ) : (
-                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-2 text-center">
-                     <ImageOff className="h-8 w-8 mb-2 opacity-50" />
-                     <span className="text-[10px] font-black uppercase">No Cover</span>
-                 </div>
-             )}
-             {book.course_reserve && (
-                 <div className="absolute top-2 right-2 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded shadow-sm">
-                     RESERVE
-                 </div>
-             )}
-             <div className="absolute bottom-2 left-2 right-2">
-                <span className={`block text-center text-[10px] font-bold uppercase py-1 rounded shadow-sm backdrop-blur-md ${book.status === 'AVAILABLE' ? 'bg-green-500/90 text-white' : 'bg-slate-800/90 text-white'}`}>
-                     {book.status}
-                </span>
-             </div>
+             {book.cover_url ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-2 text-center"><ImageOff className="h-8 w-8 mb-2 opacity-50" /><span className="text-[10px] font-black uppercase">No Cover</span></div>}
+             <div className="absolute bottom-2 left-2 right-2"><span className={`block text-center text-[10px] font-bold uppercase py-1 rounded shadow-sm backdrop-blur-md ${book.status === 'AVAILABLE' ? 'bg-green-500/90 text-white' : 'bg-slate-800/90 text-white'}`}>{book.status}</span></div>
           </div>
-          <div className="px-1">
-              <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2">{book.title}</h4>
-              <p className="text-xs text-slate-500 truncate">{book.author}</p>
-          </div>
+          <div className="px-1"><h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2">{book.title}</h4><p className="text-xs text-slate-500 truncate">{book.author}</p></div>
       </div>
   );
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex flex-col gap-6 md:gap-8 pb-24 font-sans relative">
+      <LibraryAssistant />
       <div className="max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
-        
         <div className="lg:col-span-3 space-y-6 md:space-y-8">
             <div className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start gap-6">
                 <div className="flex-1">
                     <h1 className="text-2xl md:text-4xl font-bold text-slate-800 mb-2 tracking-tight">Thomian Kiosk</h1>
-                    <p className="text-slate-500 mb-6 text-sm md:text-lg">Discover your next adventure or track your reading progress.</p>
-                    
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 md:pl-6 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 md:h-8 md:w-8 text-slate-400" />
-                        </div>
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            className="block w-full pl-12 pr-12 py-4 md:pl-16 md:pr-16 md:py-6 bg-slate-50 border-2 border-slate-300 rounded-2xl text-lg md:text-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all placeholder-slate-400"
-                            placeholder="Find books, authors, or subjects..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        />
+                    <div className="relative group mt-4">
+                        <div className="absolute inset-y-0 left-0 pl-4 md:pl-6 flex items-center pointer-events-none"><Search className="h-5 w-5 md:h-8 md:w-8 text-slate-400" /></div>
+                        <input ref={inputRef} type="text" className="block w-full pl-12 pr-12 py-4 md:pl-16 md:pr-16 md:py-6 bg-slate-50 border-2 border-slate-300 rounded-2xl text-lg md:text-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all" placeholder="Find books, authors, or subjects..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
                     </div>
                 </div>
-
-                {/* Account Toggle */}
                 {!activePatron ? (
-                    <button 
-                        onClick={() => setShowAccountLogin(true)}
-                        className="bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
-                    >
-                        <LogIn className="h-5 w-5" /> My Account
-                    </button>
+                    <button onClick={() => setShowAccountLogin(true)} className="bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"><LogIn className="h-5 w-5" /> My Account</button>
                 ) : (
-                    <div className="bg-white border-2 border-blue-600 p-4 rounded-2xl shadow-xl animate-fade-in flex items-center gap-4">
-                        <div className="h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black">
-                            {activePatron.full_name.charAt(0)}
+                    <div className="bg-white border-2 border-blue-600 p-4 rounded-2xl shadow-xl flex items-center gap-4">
+                        <div className="h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black shrink-0">{activePatron.full_name.charAt(0)}</div>
+                        <div className="flex-1 overflow-hidden"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Logged In</p><p className="font-bold text-slate-800 truncate">{activePatron.full_name}</p></div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setShowProfileEdit(true)} className="p-2 text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 rounded-lg"><Settings className="h-5 w-5" /></button>
+                            <button onClick={() => setActivePatron(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-slate-50 rounded-lg"><LogOut className="h-5 w-5" /></button>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Logged In</p>
-                            <p className="font-bold text-slate-800">{activePatron.full_name}</p>
-                        </div>
-                        <button onClick={() => setActivePatron(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                            <LogOut className="h-5 w-5" />
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* Active Student Portal */}
             {activePatron && (
-                <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white animate-fade-in-up grid grid-cols-1 md:grid-cols-3 gap-8 shadow-2xl relative overflow-hidden">
-                    <Sparkles className="absolute -top-10 -right-10 h-40 w-40 text-blue-500/10" />
-                    <div className="md:col-span-2">
-                        <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
-                            <History className="h-6 w-6 text-blue-400" /> Current Loans & Fines
-                        </h3>
-                        <div className="space-y-3">
-                            {patronLoans.length === 0 ? (
-                                <p className="text-slate-400 italic">No active loans found.</p>
-                            ) : (
-                                patronLoans.map(loan => (
-                                    <div key={loan.id} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center group hover:bg-white/10 transition-all">
-                                        <div>
-                                            <p className="font-bold text-lg">{loan.book_title}</p>
-                                            <p className="text-xs text-slate-400 uppercase tracking-widest font-black">Due: {new Date(loan.due_date).toLocaleDateString()}</p>
-                                        </div>
-                                        <button className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tighter flex items-center gap-2 hover:bg-blue-500 transition-colors">
-                                            <RefreshCw className="h-3 w-3" /> Renew
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <div className="bg-white/10 rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between border border-white/5">
-                        <div>
-                            <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Account Balance</p>
-                            <p className="text-5xl font-black tracking-tighter">${activePatron.fines.toFixed(2)}</p>
-                            {activePatron.fines > 0 ? (
-                                <p className="text-xs text-rose-400 font-bold mt-2 flex items-center gap-1">
-                                    <CreditCard className="h-3 w-3" /> Fines must be cleared at desk.
-                                </p>
-                            ) : (
-                                <p className="text-xs text-green-400 font-bold mt-2 flex items-center gap-1">
-                                    <CheckCircle className="h-3 w-3" /> Account in good standing.
-                                </p>
-                            )}
-                        </div>
-                        <div className="pt-6">
-                            <button className="w-full bg-white text-slate-900 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all">
-                                View Full History
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <PatronPortal 
+                    patron={activePatron} 
+                    loans={patronLoans} 
+                    onViewHistory={handleViewHistory} 
+                    onOpenSettings={() => setShowProfileEdit(true)} 
+                />
             )}
 
             {!query && !loading && !activePatron && (
                 <div className="space-y-8 animate-fade-in-up">
-                    {/* New Arrivals */}
                     <div className="bg-white p-6 rounded-3xl border border-slate-200">
-                         <div className="flex items-center gap-2 mb-4 px-2">
-                            <Sparkles className="h-5 w-5 text-purple-600" />
-                            <h3 className="font-bold text-lg">Fresh from the Box</h3>
-                         </div>
-                         <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                             {newArrivals.map(book => <BookPosterCard key={book.id} book={book} isNew={true} />)}
-                         </div>
+                         <div className="flex items-center gap-2 mb-4 px-2"><Sparkles className="h-5 w-5 text-purple-600" /><h3 className="font-bold text-lg">Fresh from the Box</h3></div>
+                         <div className="flex gap-4 overflow-x-auto pb-4 snap-x">{newArrivals.map(book => <BookPosterCard key={book.id} book={book} />)}</div>
                     </div>
-
-                    {/* Trending Section */}
                     {trending.length > 0 && (
                         <div className="bg-white p-6 rounded-3xl border border-slate-200">
-                             <div className="flex items-center gap-2 mb-4 px-2">
-                                <TrendingUp className="h-5 w-5 text-blue-600" />
-                                <h3 className="font-bold text-lg">Trending Now</h3>
-                             </div>
-                             <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                                 {trending.map(book => <BookPosterCard key={book.id} book={book} />)}
-                             </div>
+                             <div className="flex items-center gap-2 mb-4 px-2"><TrendingUp className="h-5 w-5 text-blue-600" /><h3 className="font-bold text-lg">Trending Now</h3></div>
+                             <div className="flex gap-4 overflow-x-auto pb-4 snap-x">{trending.map(book => <BookPosterCard key={book.id} book={book} />)}</div>
                         </div>
                     )}
                 </div>
             )}
 
             <div ref={resultsSectionRef} className="space-y-4 scroll-mt-24">
-                {results.length > 0 && results.map(book => (
+                {results.map(book => (
                     <div key={book.id} onClick={() => selectBook(book)} className={`p-4 md:p-6 rounded-2xl cursor-pointer border-2 transition-all bg-white flex gap-6 ${selectedBook?.id === book.id ? 'border-blue-600 shadow-xl' : 'border-slate-200'}`}>
-                        <div className="shrink-0 w-24 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
-                            {book.cover_url && <img src={book.cover_url} className="w-full h-full object-cover" />}
-                        </div>
+                        <div className="shrink-0 w-24 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">{book.cover_url && <img src={book.cover_url} className="w-full h-full object-cover" />}</div>
                         <div className="flex-1 flex flex-col justify-between">
-                            <div>
-                                <h3 className="font-bold text-xl text-slate-900">{book.title}</h3>
-                                <p className="text-slate-600 font-medium">{book.author}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="bg-slate-100 px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest text-slate-500">DDC: {book.ddc_code}</span>
-                                <span className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest ${book.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{book.status}</span>
-                                {book.course_reserve && <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest">{book.course_reserve}</span>}
-                            </div>
+                            <div><h3 className="font-bold text-xl text-slate-900">{book.title}</h3><p className="text-slate-600 font-medium">{book.author}</p></div>
+                            <div className="flex items-center gap-3"><span className="bg-slate-100 px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest text-slate-500">DDC: {book.ddc_code}</span><span className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest ${book.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{book.status}</span></div>
                         </div>
                     </div>
                 ))}
             </div>
 
             <div ref={mapSectionRef} className="scroll-mt-6">
-                <div className="bg-white p-2 md:p-3 rounded-3xl shadow-lg border border-slate-200">
-                    <div className="w-full h-[400px] md:h-[550px] bg-slate-50 rounded-2xl relative overflow-hidden">
-                        <WayfinderMap 
-                            selectedBook={selectedBook} 
-                            activeLevelId={activeLevelId}
-                            onAutoSwitchLevel={(id) => setActiveLevelId(id)}
-                        />
+                {selectedBook && (
+                    <div className="mb-6 bg-white rounded-3xl p-6 border border-slate-200 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4"><div className="h-14 w-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0"><Bookmark className="h-7 w-7 fill-current" /></div><div><h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Reserve This Item</h3><p className="text-sm text-slate-500 font-medium">{selectedBook.status === 'AVAILABLE' ? 'Book is on shelf. Reserve for pickup.' : 'Book is currently loaned. Join the queue.'}</p></div></div>
+                        <button onClick={initiateHold} disabled={selectedBook.status === 'LOST' || selectedBook.status === 'HELD' || selectedBook.status === 'PROCESSING'} className={`px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest shadow-xl transition-all flex items-center gap-3 active:scale-95 disabled:opacity-50 ${selectedBook.status === 'AVAILABLE' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-amber-50 text-white hover:bg-amber-600'}`}>{selectedBook.status === 'AVAILABLE' ? 'Reserve Now' : 'Place Hold'} <Clock className="h-4 w-4" /></button>
                     </div>
-                </div>
+                )}
+                <div className="bg-white p-2 md:p-3 rounded-3xl shadow-lg border border-slate-200"><div className="w-full h-[400px] md:h-[550px] bg-slate-50 rounded-2xl relative overflow-hidden"><WayfinderMap selectedBook={selectedBook} activeLevelId={activeLevelId} onAutoSwitchLevel={(id) => setActiveLevelId(id)} /></div></div>
             </div>
         </div>
 
-        {/* Account Login Modal Overlay */}
-        {showAccountLogin && (
-            <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
-                <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in-up">
-                    <div className="bg-slate-50 px-8 py-6 border-b border-slate-200 flex justify-between items-center">
-                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-3">
-                            <UserCheck className="h-6 w-6 text-blue-600" /> Student Login
-                        </h3>
-                        <button onClick={() => setShowAccountLogin(false)} className="p-2 text-slate-400 hover:text-slate-600"><X className="h-6 w-6" /></button>
-                    </div>
-                    <div className="p-10 space-y-6">
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Scan ID or Enter Number</label>
-                            <input 
-                                type="text"
-                                value={loginId}
-                                onChange={(e) => setLoginId(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handlePatronLogin()}
-                                className="w-full text-3xl font-mono font-bold p-6 bg-slate-50 border-4 border-slate-200 rounded-2xl focus:border-blue-600 focus:bg-white transition-all outline-none text-center"
-                                placeholder="ST-XXXX-XXX"
-                                autoFocus
-                            />
-                        </div>
-                        <button 
-                            onClick={handlePatronLogin}
-                            disabled={isLoggingIn}
-                            className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-3 active:scale-95"
-                        >
-                            {isLoggingIn ? <RefreshCw className="h-6 w-6 animate-spin" /> : <LogIn className="h-6 w-6" />} Access Account
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
         <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-[520px] overflow-hidden">
-                <div className="flex items-center gap-2 mb-6 border-b pb-4">
-                    <Calendar className="h-6 w-6 text-blue-600" />
-                    <h3 className="font-black text-xl text-slate-800">Library News</h3>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
-                    {events.map(event => (
-                        <div key={event.id} className="flex items-stretch bg-white border-2 border-slate-50 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="w-16 bg-slate-900 text-white flex flex-col items-center justify-center p-2">
-                                <span className="text-[10px] font-black uppercase opacity-60">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
-                                <span className="text-xl font-black">{new Date(event.date).getDate()}</span>
+                <div className="flex items-center gap-2 mb-6 border-b pb-4"><Calendar className="h-6 w-6 text-blue-600" /><h3 className="font-black text-xl text-slate-800">Library News</h3></div>
+                <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+                    {events.map(event => {
+                        const dateObj = new Date(event.date);
+                        return (
+                            <div key={event.id} className="flex flex-col p-4 rounded-2xl border-2 transition-all hover:scale-[1.02] shadow-sm bg-blue-50 border-blue-100">
+                                <div className="flex justify-between items-start mb-2"><div className="p-2 rounded-xl bg-blue-100 text-blue-700"><Calendar className="h-5 w-5" /></div><span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white/50 px-2 py-1 rounded-lg">{dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>
+                                <h4 className="font-black text-sm mb-1 text-blue-700">{event.title}</h4>
+                                <p className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-2">{event.description}</p>
                             </div>
-                            <div className="flex-1 p-4">
-                                <h4 className="text-sm font-black text-slate-800 line-clamp-1">{event.title}</h4>
-                                <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">{event.description}</p>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
-
             <div className="bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl shadow-md p-6 text-white text-center">
                 <h3 className="font-bold text-lg mb-2">Need Help?</h3>
                 <p className="text-white/80 text-sm mb-4">Tap to alert a librarian that you need assistance.</p>
-                <button onClick={handleLibrarianCall} disabled={helpStatus !== 'IDLE'} className="w-full py-4 rounded-xl font-bold bg-white text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg">
-                    {helpStatus === 'IDLE' ? <><Bell className="h-4 w-4" /> Call Librarian</> : helpStatus === 'REQUESTING' ? "Requesting..." : "Help is coming!"}
-                </button>
+                <button onClick={handleLibrarianCall} disabled={helpStatus !== 'IDLE'} className="w-full py-4 rounded-xl font-bold bg-white text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg">{helpStatus === 'IDLE' ? <><Bell className="h-4 w-4" /> Call Librarian</> : helpStatus === 'REQUESTING' ? "Requesting..." : "Help is coming!"}</button>
             </div>
         </div>
       </div>

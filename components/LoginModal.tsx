@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lock, User, Key, X, ChevronRight, AlertCircle, ShieldCheck, Settings, Globe, Wifi, Sparkles } from 'lucide-react';
+import { Lock, User, Key, X, ChevronRight, AlertCircle, ShieldCheck, Settings, Globe, Wifi, Sparkles, UserCheck } from 'lucide-react';
 import { mockLogin, getLanUrl, setLanUrl, initializeNetwork } from '../services/mockApi';
 import { AuthUser } from '../types';
 
@@ -49,6 +49,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
   const handleDemoFill = () => {
     setUsername('admin');
     setPassword('admin123');
+    setError('');
+  };
+
+  const handleLibrarianFill = () => {
+    setUsername('librarian');
+    setPassword('lib123');
     setError('');
   };
 
@@ -136,18 +142,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
                 <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
-                            <Sparkles className="h-3 w-3" /> Master Blueprint Access
+                            <Sparkles className="h-3 w-3" /> Quick Access
                         </span>
+                    </div>
+                    <div className="flex gap-2">
                         <button 
                             onClick={handleDemoFill}
-                            className="text-[10px] font-black bg-amber-600 text-white px-2 py-1 rounded uppercase hover:bg-amber-700 transition-colors shadow-sm"
+                            className="flex-1 text-[10px] font-black bg-amber-600 text-white px-2 py-2 rounded-lg uppercase hover:bg-amber-700 transition-colors shadow-sm flex items-center justify-center gap-2"
                         >
-                            Fill Admin
+                            <ShieldCheck className="h-3 w-3" /> Fill Admin
                         </button>
-                    </div>
-                    <div className="flex justify-between text-xs font-mono text-amber-800/70">
-                        <span>User: <strong className="text-amber-900">admin</strong></span>
-                        <span>Pass: <strong className="text-amber-900">admin123</strong></span>
+                        <button 
+                            onClick={handleLibrarianFill}
+                            className="flex-1 text-[10px] font-black bg-blue-600 text-white px-2 py-2 rounded-lg uppercase hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+                        >
+                            <UserCheck className="h-3 w-3" /> Fill Librarian
+                        </button>
                     </div>
                 </div>
 

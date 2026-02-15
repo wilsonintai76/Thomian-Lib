@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 from .models import Book, Patron, Loan, CirculationRule, LibraryEvent, Hold, SystemAlert, SystemConfiguration
 from .serializers import BookSerializer, PatronSerializer, CirculationRuleSerializer, LibraryEventSerializer, SystemAlertSerializer, SystemConfigSerializer
 from .services import CatalogingService
@@ -142,7 +143,7 @@ class CirculationViewSet(viewsets.ViewSet):
         book = Book.objects.filter(barcode_id=barcode).first()
         if not book: return Response({'success': False, 'message': 'Book not found'}, status=404)
         loan = Loan.objects.filter(book=book, returned_at__isnull=True).first()
-        fine = 0.0
+        fine = Decimal('0.00')
         days_overdue = 0
         if loan:
             loan.returned_at = timezone.now()
@@ -152,8 +153,9 @@ class CirculationViewSet(viewsets.ViewSet):
                 days_overdue = delta.days
                 if days_overdue > 0:
                     rule = CirculationRule.objects.filter(patron_group=loan.patron.patron_group, material_type=book.material_type).first()
-                    fine_rate = rule.fine_per_day if rule else 0.50
-                    fine = float(days_overdue) * float(fine_rate)
+                    fine_rate = rule.fine_per_day if rule else Decimal('0.50')
+                    # Ensure fine is calculated as Decimal
+                    fine = Decimal(days_overdue) * fine_rate
                     loan.patron.fines += fine
                     loan.patron.is_blocked = True
                     loan.patron.save()
@@ -173,4 +175,4 @@ class CirculationViewSet(viewsets.ViewSet):
             book.hold_expires_at = None
             book.queue_length = 0
             book.save()
-        return Response({'success': True, 'fine_amount': fine, 'days_overdue': days_overdue, 'book': BookSerializer(book).data, 'next_patron': next_patron_data})
+        return Response({'success': True, 'fine_amount': float(fine), 'days_overdue': days_overdue, 'book': BookSerializer(book).data, 'next_patron': next_patron_data})
