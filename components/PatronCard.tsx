@@ -44,9 +44,13 @@ const PatronCard: React.FC<PatronCardProps> = ({ patron, config }) => {
 
         {/* Card Body */}
         <div className="flex-1 flex p-4 gap-4 bg-gradient-to-br from-white to-slate-50">
-            {/* Photo Placeholder */}
+            {/* Photo Identity Area */}
             <div className="w-20 h-24 bg-slate-100 rounded-lg border-2 border-slate-200 flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-inner">
-                <User className="h-12 w-12 text-slate-300" />
+                {patron.photo_url ? (
+                    <img src={patron.photo_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <User className="h-12 w-12 text-slate-300" />
+                )}
                 <div className="absolute bottom-0 w-full bg-slate-200/80 py-1 text-center">
                     <span className="text-[6px] font-black text-slate-500 uppercase">Identity Verified</span>
                 </div>

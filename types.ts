@@ -14,6 +14,13 @@ export interface AuthUser {
     avatar_color?: string;
 }
 
+export interface LibraryClass {
+  id: string;
+  name: string;
+  grade_level?: string;
+  room_number?: string;
+}
+
 export interface Transaction {
   id: string;
   patron_id: string;
@@ -32,6 +39,7 @@ export interface Book {
   author: string;
   isbn: string;
   ddc_code: string; 
+  classification: string; 
   call_number?: string;
   barcode_id: string;
   cover_url?: string;
@@ -42,8 +50,8 @@ export interface Book {
   queue_length?: number;
   last_inventoried?: string;
   
-  // Professional ILS Fields
-  value: number; // Price/Replacement Cost
+  // Professional ILS Fields (Koha Alignment)
+  value: number; 
   edition?: string;
   series?: string;
   language?: string;
@@ -51,6 +59,13 @@ export interface Book {
   vendor?: string;
   acquisition_date?: string;
   summary?: string;
+  
+  // New Missing Professional Fields
+  publisher?: string;
+  pub_year?: string;
+  format?: 'HARDCOVER' | 'PAPERBACK' | 'EQUIPMENT' | 'DIGITAL' | 'PERIODICAL';
+  subjects?: string[];
+  cutter_number?: string;
   
   material_type: 'REGULAR' | 'REFERENCE' | 'PERIODICAL' | 'MEDIA';
   course_reserve?: string;
@@ -68,6 +83,7 @@ export interface Patron {
   total_paid?: number;
   email?: string;
   phone?: string;
+  photo_url?: string; 
 }
 
 export interface MapConfig {
@@ -139,7 +155,6 @@ export interface Loan {
   book_title?: string;
 }
 
-// Added missing interfaces to resolve compilation errors
 export interface SystemAlert {
   id: string;
   message: string;

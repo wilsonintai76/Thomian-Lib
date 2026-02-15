@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Settings, Download, Upload, Trash2, AlertTriangle, CheckCircle, ShieldAlert, FileJson, Loader2, RefreshCw, Database, HardDrive, Wifi, Globe, Server, Save } from 'lucide-react';
+import { Settings, Download, Upload, Trash2, AlertTriangle, CheckCircle, ShieldAlert, FileJson, Loader2, RefreshCw, Database, HardDrive, Wifi, Globe, Server, Save, Printer, StickyNote, Sliders } from 'lucide-react';
 import { exportSystemData, importSystemData, performFactoryReset, mockGetBooks, mockGetPatrons, mockGetTransactions, getLanUrl, setLanUrl, initializeNetwork } from '../services/mockApi';
 
 const SystemSettings: React.FC = () => {
@@ -16,12 +16,17 @@ const SystemSettings: React.FC = () => {
   const [lanUrlInput, setLanUrlInput] = useState('');
   const [isSavingNet, setIsSavingNet] = useState(false);
   
+  // Label Settings
+  const [labelMode, setLabelMode] = useState('SHEET');
+  const [sheetLayout, setSheetLayout] = useState('3x10');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
       calculateStorageStats();
       setLanUrlInput(getLanUrl());
       setNetworkMode(localStorage.getItem('thomian_network_mode') || 'AUTO');
+      setLabelMode(localStorage.getItem('thomian_label_mode') || 'SHEET');
   }, []);
 
   const calculateStorageStats = async () => {
@@ -104,14 +109,13 @@ const SystemSettings: React.FC = () => {
       setIsSavingNet(true);
       setLanUrl(lanUrlInput);
       localStorage.setItem('thomian_network_mode', networkMode);
+      localStorage.setItem('thomian_label_mode', labelMode);
       
       // Simulate network handshake
       const result = await initializeNetwork();
       
       setIsSavingNet(false);
-      alert(`Network Configuration Saved.\nStatus: ${result}`);
-      // Force reload to apply networking changes across all services
-      window.location.reload();
+      alert(`System Configuration Saved.\nNetwork Handshake: ${result}`);
   };
 
   return (
@@ -126,6 +130,60 @@ const SystemSettings: React.FC = () => {
                 <p className="text-slate-500 font-medium">Data sovereignty, network configuration, and critical controls.</p>
             </div>
         </div>
+
+        {/* Hardware & Labels Section */}
+        <section className="space-y-6">
+            <div className="flex items-center gap-3">
+                <Printer className="h-6 w-6 text-blue-600" />
+                <h3 className="text-xl font-bold text-slate-800">Hardware & Labels</h3>
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Label Printer Type</label>
+                        <div className="flex gap-2">
+                             <button
+                                onClick={() => setLabelMode('SHEET')}
+                                className={`flex-1 py-4 rounded-xl text-xs font-black flex flex-col items-center gap-2 border-2 transition-all ${labelMode === 'SHEET' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:border-blue-100'}`}
+                            >
+                                <StickyNote className="h-5 w-5" /> Adhesive Sheet
+                            </button>
+                            <button
+                                onClick={() => setLabelMode('THERMAL')}
+                                className={`flex-1 py-4 rounded-xl text-xs font-black flex flex-col items-center gap-2 border-2 transition-all ${labelMode === 'THERMAL' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-100'}`}
+                            >
+                                <Printer className="h-5 w-5" /> Thermal Roll
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-3 font-medium uppercase tracking-tight">
+                            "Adhesive Sheet" is for A4/Letter laser printers. "Thermal Roll" is for dedicated Zebra/Brother devices.
+                        </p>
+                    </div>
+
+                    {labelMode === 'SHEET' && (
+                        <div className="animate-fade-in">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Sheet Grid Configuration</label>
+                            <select 
+                                value={sheetLayout}
+                                onChange={(e) => setSheetLayout(e.target.value)}
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:border-blue-500"
+                            >
+                                <option value="3x10">Standard 3x10 (30 Labels)</option>
+                                <option value="2x8">Large 2x8 (16 Labels)</option>
+                                <option value="CUSTOM">Custom Matrix...</option>
+                            </select>
+                            <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
+                                <Sliders className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-blue-600 font-bold leading-relaxed uppercase">
+                                    Calibration offsets can be adjusted to match your specific sticker paper brand.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
 
         {/* Network Infrastructure Section */}
         <section className="space-y-6">

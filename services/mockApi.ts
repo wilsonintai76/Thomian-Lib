@@ -1,10 +1,11 @@
 
-import { Book, Patron, Transaction, AuthUser, MapConfig, MapLevel, ShelfDefinition, LibraryEvent, SystemStats, OverdueReportItem, SystemAlert, CirculationRule, CheckInResult, CheckoutResult } from '../types';
+import { Book, Patron, Transaction, AuthUser, MapConfig, MapLevel, ShelfDefinition, LibraryEvent, SystemStats, OverdueReportItem, SystemAlert, CirculationRule, CheckInResult, CheckoutResult, LibraryClass } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 
 const STORAGE_KEY_BOOKS = "thomian_books";
 const STORAGE_KEY_TRANSACTIONS = "thomian_transactions";
 const STORAGE_KEY_PATRONS = "thomian_patrons";
+const STORAGE_KEY_CLASSES = "thomian_classes";
 const STORAGE_KEY_EVENTS = "thomian_events";
 const STORAGE_KEY_RULES = "thomian_rules";
 const STORAGE_KEY_ALERTS = "thomian_alerts";
@@ -17,16 +18,20 @@ const STORAGE_KEY_LAN_URL = "thomian_lan_url";
 const SCHOOL_CREST_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="50%" stop-color="black"/><stop offset="50%" stop-color="%23D6001C"/></linearGradient></defs><path d="M250 50Q125 70 50 50L50 280C50 400 250 480 250 480C250 480 450 400 450 280L450 50Q375 70 250 50Z" fill="url(%23g1)"/><g transform="translate(90,80) scale(0.6)"><path d="M50 100L10 100L20 40L50 0L80 40L90 100Z" fill="%23FFD700" stroke="white" stroke-width="2"/></g><g transform="translate(300,80) scale(0.6)"><path d="M10 30L80 30L100 10L110 20L90 40C90 60 70 70 40 70L20 70C10 70 0 60 10 30Z" fill="%23FFD700"/><circle cx="30" cy="15" r="10" fill="orange"/></g><g transform="translate(250,240) rotate(-30)"><rect x="-80" y="-10" width="160" height="20" fill="%23FFD700"/><rect x="60" y="-10" width="20" height="80" fill="%23FFD700"/></g><g transform="translate(20,430)"><path d="M20 50Q230 130 440 50L440 90Q230 170 20 90Z" fill="%23FFD700" stroke="black" stroke-width="2"/><text x="230" y="105" font-family="sans-serif" font-weight="900" font-size="30" text-anchor="middle" fill="black">AIM HIGHER</text></g></svg>`;
 
 const INITIAL_BOOKS: Book[] = [
-    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: '813.52', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', value: 15.99, language: 'English', pages: 180, vendor: 'Scribner', loan_count: 45, created_at: new Date().toISOString() },
-    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', value: 85.00, edition: '2nd', pages: 450, loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'B-3', title: 'World History', author: 'William J. Duiker', isbn: '9781305951129', barcode_id: '9001', ddc_code: '909', shelf_location: 'Shelf D', status: 'AVAILABLE', material_type: 'REGULAR', value: 120.00, vendor: 'Cengage Learning', loan_count: 89, created_at: new Date().toISOString() },
-    { id: 'B-4', title: 'Philosophy 101', author: 'Paul Kleinman', isbn: '9781440567674', barcode_id: '0001', ddc_code: '100', shelf_location: 'Shelf A', status: 'AVAILABLE', material_type: 'REGULAR', value: 14.50, pages: 256, loan_count: 5, created_at: new Date().toISOString() },
+    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: 'FIC', classification: 'Fiction', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', value: 15.99, language: 'English', pages: 180, vendor: 'Scribner', loan_count: 45, publisher: 'Scribner', pub_year: '2004', format: 'PAPERBACK', created_at: new Date().toISOString() },
+    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', classification: 'Science', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', value: 85.00, publisher: 'University Science Books', pub_year: '2005', format: 'HARDCOVER', edition: '2nd', pages: 450, loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString() },
 ];
 
 const INITIAL_RULES: CirculationRule[] = [
     { id: 'R-1', patron_group: 'STUDENT', material_type: 'REGULAR', loan_days: 14, max_items: 5, fine_per_day: 0.50 },
     { id: 'R-2', patron_group: 'STUDENT', material_type: 'REFERENCE', loan_days: 0, max_items: 0, fine_per_day: 0 },
     { id: 'R-3', patron_group: 'TEACHER', material_type: 'REGULAR', loan_days: 30, max_items: 20, fine_per_day: 0.10 },
+];
+
+const INITIAL_CLASSES: LibraryClass[] = [
+    { id: 'C-1', name: 'Grade 10-A', grade_level: '10' },
+    { id: 'C-2', name: 'Grade 12-B', grade_level: '12' },
+    { id: 'C-3', name: 'Grade 8-C', grade_level: '8' },
 ];
 
 export const mockGetBooks = async (): Promise<Book[]> => {
@@ -65,12 +70,34 @@ export const mockDeleteBook = async (id: string): Promise<void> => {
     localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(filtered));
 };
 
+export const mockGetClasses = async (): Promise<LibraryClass[]> => {
+    const stored = localStorage.getItem(STORAGE_KEY_CLASSES);
+    if (stored) return JSON.parse(stored);
+    localStorage.setItem(STORAGE_KEY_CLASSES, JSON.stringify(INITIAL_CLASSES));
+    return INITIAL_CLASSES;
+};
+
+export const mockAddClass = async (libClass: Omit<LibraryClass, 'id'>): Promise<LibraryClass> => {
+    const classes = await mockGetClasses();
+    const newClass = { ...libClass, id: `C-${Date.now()}` };
+    classes.push(newClass);
+    localStorage.setItem(STORAGE_KEY_CLASSES, JSON.stringify(classes));
+    return newClass;
+};
+
+export const mockDeleteClass = async (id: string): Promise<void> => {
+    const classes = await mockGetClasses();
+    const filtered = classes.filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEY_CLASSES, JSON.stringify(filtered));
+};
+
 export const exportSystemData = async (): Promise<string> => {
     const data = {
         version: "1.0",
         timestamp: new Date().toISOString(),
         books: JSON.parse(localStorage.getItem(STORAGE_KEY_BOOKS) || '[]'),
         patrons: JSON.parse(localStorage.getItem(STORAGE_KEY_PATRONS) || '[]'),
+        classes: JSON.parse(localStorage.getItem(STORAGE_KEY_CLASSES) || '[]'),
         transactions: JSON.parse(localStorage.getItem(STORAGE_KEY_TRANSACTIONS) || '[]'),
         events: JSON.parse(localStorage.getItem(STORAGE_KEY_EVENTS) || '[]'),
         rules: JSON.parse(localStorage.getItem(STORAGE_KEY_RULES) || '[]'),
@@ -85,6 +112,7 @@ export const importSystemData = async (jsonString: string): Promise<boolean> => 
         if (!data.books || !data.patrons) throw new Error("Invalid backup format");
         if (data.books) localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(data.books));
         if (data.patrons) localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(data.patrons));
+        if (data.classes) localStorage.setItem(STORAGE_KEY_CLASSES, JSON.stringify(data.classes));
         if (data.transactions) localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(data.transactions));
         if (data.events) localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(data.events));
         if (data.rules) localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(data.rules));
@@ -97,7 +125,7 @@ export const importSystemData = async (jsonString: string): Promise<boolean> => 
 };
 
 export const performFactoryReset = async (): Promise<void> => {
-    const keysToRemove = [STORAGE_KEY_BOOKS, STORAGE_KEY_TRANSACTIONS, STORAGE_KEY_PATRONS, STORAGE_KEY_EVENTS, STORAGE_KEY_RULES, STORAGE_KEY_ALERTS, STORAGE_KEY_MAP];
+    const keysToRemove = [STORAGE_KEY_BOOKS, STORAGE_KEY_TRANSACTIONS, STORAGE_KEY_PATRONS, STORAGE_KEY_CLASSES, STORAGE_KEY_EVENTS, STORAGE_KEY_RULES, STORAGE_KEY_ALERTS, STORAGE_KEY_MAP];
     keysToRemove.forEach(key => localStorage.removeItem(key));
     await new Promise(r => setTimeout(r, 500));
 };
@@ -303,7 +331,20 @@ export const simulateCatalogWaterfall = async (isbn: string, onUpdate: (source: 
     onUpdate('OPEN_LIBRARY', 'PENDING');
     await new Promise(r => setTimeout(r, 1000));
     onUpdate('OPEN_LIBRARY', 'FOUND');
-    return { title: 'Acquired via Global API', author: 'Auto-Resolved Author', isbn: isbn, ddc_code: '000.00', material_type: 'REGULAR', status: 'AVAILABLE', value: 25.00, language: 'English' };
+    return { 
+        title: 'Professional Library Science', 
+        author: 'Dewey, Melvil', 
+        isbn: isbn, 
+        ddc_code: '025.431', 
+        publisher: 'Library Bureau',
+        pub_year: '1876',
+        format: 'HARDCOVER',
+        material_type: 'REGULAR', 
+        status: 'AVAILABLE', 
+        value: 25.00, 
+        language: 'English', 
+        classification: 'Technology' 
+    };
 };
 
 export const mockGetBooksByShelf = async (shelf: string): Promise<Book[]> => {

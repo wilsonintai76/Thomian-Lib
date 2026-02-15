@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { BookOpen, ArrowLeftRight, Settings, ScanLine, Printer, LayoutGrid, Calendar, HelpCircle, ChevronRight, Bookmark, AlertCircle, Search, CheckCircle, MapPin, Sparkles, Building2, MapPinned, Image as ImageIcon, Smartphone, ShieldCheck, Wallet, UserCheck, Zap, Server, RefreshCcw, Globe, Wifi, Cloud, Layers, DollarSign, Info } from 'lucide-react';
+import { BookOpen, ArrowLeftRight, Settings, ScanLine, Printer, LayoutGrid, Calendar, HelpCircle, ChevronRight, Bookmark, AlertCircle, Search, CheckCircle, MapPin, Sparkles, Building2, MapPinned, Image as ImageIcon, Smartphone, ShieldCheck, Wallet, UserCheck, Zap, Server, RefreshCcw, Globe, Wifi, Cloud, Layers, DollarSign, Info, StickyNote } from 'lucide-react';
 
 interface HelpTopic {
   id: string;
@@ -29,6 +29,46 @@ const HelpGuide: React.FC = () => {
               <li><strong>Scan Patron ID:</strong> Identification is required before items can be added.</li>
               <li><strong>Blocked Accounts:</strong> If a patron has overdue fines exceeding the matrix limit, checkout will be automatically restricted.</li>
             </ol>
+          </section>
+        </div>
+      )
+    },
+    {
+      id: 'STICKERS',
+      title: 'Hardware & Stickers',
+      icon: StickyNote,
+      description: 'Setup for Zebra printers and adhesive sheet printing.',
+      content: (
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+               Sticker Label Standards <Printer className="h-5 w-5 text-blue-600" />
+            </h3>
+            <p className="text-slate-600 mb-4">Thomian Library supports two standard sticker formats:</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span className="font-bold text-blue-600 uppercase text-[10px] tracking-widest block mb-2">Standard Sheet (A4/Letter)</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        Best for standard laser/inkjet printers. Use "Sheet Grid" mode. 
+                        <strong>Tip:</strong> Ensure your printer's "Scale" is set to 100% and "Background Graphics" is enabled.
+                    </p>
+                </div>
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span className="font-bold text-emerald-600 uppercase text-[10px] tracking-widest block mb-2">Thermal Rolls (Zebra)</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        Best for high-volume labeling. Uses the 1.5" x 1" continuous sticker format.
+                        Requires a direct IP connection to the printer on the local LAN.
+                    </p>
+                </div>
+            </div>
+
+            <h4 className="font-bold text-slate-800 mb-2">Browser Print Tips:</h4>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                <li><strong>Margins:</strong> Set to "None" in the print dialog.</li>
+                <li><strong>Scale:</strong> Must be "Default" or "100%".</li>
+                <li><strong>Alignment:</strong> If stickers are misaligned on a sheet, use the Sheet Calibration offsets in System Settings.</li>
+            </ul>
           </section>
         </div>
       )

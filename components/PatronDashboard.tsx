@@ -1,13 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-// Added missing Users import
-import { User, Users, Search, X, Loader2, Banknote, History, Wallet, CreditCard, AlertTriangle, BookOpen, Trash2, CheckCircle, FileText, PlusCircle, HandHelping, UserCheck, ShieldCheck, Zap, Printer, Eye, UserPlus, GraduationCap, Phone, Mail, Edit, Save, RefreshCw } from 'lucide-react';
-import { Patron, Transaction, AuthUser } from '../types';
-import { mockGetPatrons, mockUpdatePatron, mockGetMapConfig, mockRecordTransaction, mockGetTransactionsByPatron, mockCheckSession, mockPrintPatronCard, mockBulkPrintPatrons, mockAddPatron, mockDeletePatron } from '../services/mockApi';
+import { User, Users, Search, X, Loader2, Banknote, History, Wallet, CreditCard, AlertTriangle, BookOpen, Trash2, CheckCircle, FileText, PlusCircle, HandHelping, UserCheck, ShieldCheck, Zap, Printer, Eye, UserPlus, GraduationCap, Phone, Mail, Edit, Save, RefreshCw, IdCard, Building2 } from 'lucide-react';
+import { Patron, Transaction, AuthUser, MapConfig, LibraryClass } from '../types';
+import { mockGetPatrons, mockUpdatePatron, mockGetMapConfig, mockRecordTransaction, mockGetTransactionsByPatron, mockCheckSession, mockPrintPatronCard, mockBulkPrintPatrons, mockAddPatron, mockDeletePatron, mockGetClasses } from '../services/mockApi';
 import ReceiptModal from './ReceiptModal';
 import PatronCard from './PatronCard';
 import LedgerInterface from './patron/LedgerInterface';
 import PatronFormModal from './patron/PatronFormModal';
+import ClassManager from './patron/ClassManager';
 
 const PatronDashboard: React.FC = () => {
   const [patrons, setPatrons] = useState<Patron[]>([]);
@@ -15,11 +15,14 @@ const PatronDashboard: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'BLOCKED' | 'FINES'>('ALL');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
+  const [selectedPatronIds, setSelectedPatronIds] = useState<Set<string>>(new Set());
   
   // CRUD State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPatron, setEditingPatron] = useState<Patron | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isClassManagerOpen, setIsClassManagerOpen] = useState(false);
   
   // Ledger State
   const [activeLedgerPatron, setActiveLedgerPatron] = useState<Patron | null>(null);
@@ -29,9 +32,13 @@ const PatronDashboard: React.FC = () => {
   const [history, setHistory] = useState<Transaction[]>([]);
   const [lastTxn, setLastTxn] = useState<Transaction | null>(null);
 
+  // Print State
+  const [bulkPreviewPatrons, setBulkPreviewPatrons] = useState<Patron[] | null>(null);
+
   useEffect(() => { 
       loadPatrons(); 
       mockCheckSession().then(setCurrentUser); 
+      mockGetMapConfig().then(setMapConfig);
   }, []);
 
   const loadPatrons = async () => { 
@@ -69,6 +76,12 @@ const PatronDashboard: React.FC = () => {
       alert("Patron de-registered.");
   };
 
+  const handlePrintRequest = (items: Patron[]) => {
+      setBulkPreviewPatrons(items);
+      if (items.length === 1) mockPrintPatronCard(items[0]);
+      else mockBulkPrintPatrons(items);
+  };
+
   const handlePayment = async () => {
     if (!activeLedgerPatron || !paymentAmount || !currentUser) return;
     setIsProcessing(true);
@@ -90,7 +103,7 @@ const PatronDashboard: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 max-w-[1600px] mx-auto h-full flex flex-col relative pb-32">
-      {lastTxn && activeLedgerPatron && <ReceiptModal transaction={lastTxn} patron={activeLedgerPatron} config={null} onClose={() => setLastTxn(null)} />}
+      {lastTxn && activeLedgerPatron && <ReceiptModal transaction={lastTxn} patron={activeLedgerPatron} config={mapConfig} onClose={() => setLastTxn(null)} />}
       
       <PatronFormModal 
           isOpen={isFormOpen} 
@@ -99,6 +112,31 @@ const PatronDashboard: React.FC = () => {
           initialData={editingPatron}
           isSaving={isSaving}
       />
+
+      {isClassManagerOpen && <ClassManager onClose={() => setIsClassManagerOpen(false)} />}
+
+      {bulkPreviewPatrons && (
+          <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 print:bg-white print:p-0 print:inset-0">
+              <div className="bg-white rounded-[2rem] p-10 shadow-2xl animate-fade-in-up flex flex-col items-center gap-8 max-h-[80vh] overflow-y-auto print:shadow-none print:p-0 print:rounded-none print:max-h-none print:overflow-visible">
+                  <h3 className="font-black uppercase tracking-widest text-slate-400 text-xs print:hidden">
+                    {bulkPreviewPatrons.length > 1 ? `Batch Preview: ${bulkPreviewPatrons.length} Cards` : 'PVC Identity Card Preview'}
+                  </h3>
+                  <div className="print-area flex flex-wrap justify-center gap-10 print:gap-0 print:block">
+                    {bulkPreviewPatrons.map((patron, idx) => (
+                      <div key={idx} className="print:break-after-page print:flex print:items-center print:justify-center print:h-screen">
+                        <PatronCard patron={patron} config={mapConfig} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-4 w-full max-w-sm print:hidden shrink-0">
+                    <button onClick={() => setBulkPreviewPatrons(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Close</button>
+                    <button onClick={() => window.print()} className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-2">
+                        <Printer className="h-4 w-4" /> Execute Print
+                    </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {activeLedgerPatron && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6">
@@ -141,6 +179,20 @@ const PatronDashboard: React.FC = () => {
                 <button onClick={() => setFilter('FINES')} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${filter === 'FINES' ? 'bg-amber-50 text-amber-700 shadow-sm' : 'text-slate-500'}`}>Fines</button>
             </div>
             <button 
+                onClick={() => setIsClassManagerOpen(true)}
+                className="bg-white border-2 border-slate-200 text-slate-700 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+            >
+                <Building2 className="h-4 w-4 text-blue-500" /> Manage Classes
+            </button>
+            {selectedPatronIds.size > 0 && (
+                <button 
+                    onClick={() => handlePrintRequest(patrons.filter(p => selectedPatronIds.has(p.student_id)))}
+                    className="bg-emerald-600 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-100 hover:bg-emerald-700 flex items-center gap-2 transition-all active:scale-95"
+                >
+                    <Printer className="h-4 w-4" /> Print Cards ({selectedPatronIds.size})
+                </button>
+            )}
+            <button 
                 onClick={() => setIsFormOpen(true)}
                 className="bg-blue-600 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 flex items-center gap-2 transition-all active:scale-95"
             >
@@ -154,6 +206,14 @@ const PatronDashboard: React.FC = () => {
                 <table className="min-w-full divide-y divide-slate-100">
                     <thead className="bg-slate-50/50 sticky top-0 z-10 backdrop-blur">
                         <tr>
+                            <th className="px-8 py-4 text-left">
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedPatronIds.size > 0 && selectedPatronIds.size >= filteredPatrons.length} 
+                                    onChange={() => { if (selectedPatronIds.size >= filteredPatrons.length) setSelectedPatronIds(new Set()); else setSelectedPatronIds(new Set(filteredPatrons.map(p => p.student_id))); }} 
+                                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                                />
+                            </th>
                             <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Patron Entity</th>
                             <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
                             <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Academics</th>
@@ -164,16 +224,28 @@ const PatronDashboard: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-50">
                         {loading ? (
-                            <tr><td colSpan={6} className="text-center py-20"><Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto mb-2" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Directory...</p></td></tr>
+                            <tr><td colSpan={7} className="text-center py-20"><Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto mb-2" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Directory...</p></td></tr>
                         ) : filteredPatrons.length === 0 ? (
-                            <tr><td colSpan={6} className="text-center py-20 text-slate-300 italic">No matches found in directory.</td></tr>
+                            <tr><td colSpan={7} className="text-center py-20 text-slate-300 italic">No matches found in directory.</td></tr>
                         ) : (
                             filteredPatrons.map((patron) => (
-                                <tr key={patron.student_id} className="hover:bg-slate-50/50 transition-colors group">
+                                <tr key={patron.student_id} className={`hover:bg-slate-50/50 transition-colors group ${selectedPatronIds.has(patron.student_id) ? 'bg-blue-50/30' : ''}`}>
+                                    <td className="px-8 py-4">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedPatronIds.has(patron.student_id)} 
+                                            onChange={() => { const next = new Set(selectedPatronIds); if (next.has(patron.student_id)) next.delete(patron.student_id); else next.add(patron.student_id); setSelectedPatronIds(next); }} 
+                                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                                        />
+                                    </td>
                                     <td className="px-8 py-4">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 group-hover:scale-110 transition-transform">
-                                                {patron.full_name.charAt(0)}
+                                            <div className="h-10 w-10 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center text-white font-black text-xs shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                                                {patron.photo_url ? (
+                                                    <img src={patron.photo_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    patron.full_name.charAt(0)
+                                                )}
                                             </div>
                                             <div>
                                                 <span className="font-black text-slate-800 block text-sm uppercase tracking-tight leading-tight mb-0.5">{patron.full_name}</span>
@@ -209,6 +281,7 @@ const PatronDashboard: React.FC = () => {
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => { setActiveLedgerPatron(patron); setLedgerMode('PAY'); }} className="p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="Collect Fines"><Banknote className="h-4.5 w-4.5" /></button>
                                             <button onClick={() => { setActiveLedgerPatron(patron); setLedgerMode('HISTORY'); mockGetTransactionsByPatron(patron.student_id).then(setHistory); }} className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all" title="Audit History"><History className="h-4.5 w-4.5" /></button>
+                                            <button onClick={() => handlePrintRequest([patron])} className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Print ID Card"><IdCard className="h-4.5 w-4.5" /></button>
                                             <div className="h-6 w-px bg-slate-100 mx-1 self-center"></div>
                                             <button onClick={() => { setEditingPatron(patron); setIsFormOpen(true); }} className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit Identity"><Edit className="h-4.5 w-4.5" /></button>
                                             <button onClick={() => handleDeletePatron(patron.student_id)} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="De-register"><Trash2 className="h-4.5 w-4.5" /></button>
@@ -230,6 +303,26 @@ const PatronDashboard: React.FC = () => {
                 </div>
             </div>
       </div>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 9999;
+            background: white;
+          }
+        }
+      `}</style>
     </div>
   );
 };
