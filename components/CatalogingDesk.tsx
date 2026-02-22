@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Database, Loader2, Plus, List, Printer, Eye, X, PackageSearch, Tag, Edit3, Calendar, MapPin, Trash2, ShieldCheck, Sparkles, BookOpen, Keyboard, LayoutGrid, Settings2 } from 'lucide-react';
+import { Search, Database, Loader2, Plus, List, Printer, Eye, X, PackageSearch, Tag, Edit3, Calendar, MapPin, Trash2, ShieldCheck, Sparkles, BookOpen, Keyboard, LayoutGrid, Settings2, Building, DollarSign } from 'lucide-react';
 import { simulateCatalogWaterfall, mockSearchBooks, mockAddBook, mockUpdateBook, mockPrintBookLabel, mockBulkPrintLabels, mockDeleteBook } from '../services/mockApi';
 import { Book as BookType } from '../types';
 import MobileScanner from './MobileScanner';
@@ -8,6 +8,7 @@ import BookLabel from './BookLabel';
 import StocktakeDesk from './StocktakeDesk';
 import MARCEditor from './catalog/MARCEditor';
 import AcquisitionWaterfall from './catalog/AcquisitionWaterfall';
+import InventoryList from './catalog/InventoryList';
 
 type WaterfallStatus = 'IDLE' | 'PENDING' | 'FOUND' | 'NOT_FOUND';
 
@@ -191,9 +192,9 @@ const CatalogingDesk: React.FC<{ initialView?: 'ADD' | 'LIST' | 'STOCKTAKE' }> =
         {!isMobile && (
           <div className="flex items-center gap-4">
             <div className="bg-slate-100 p-1 rounded-2xl flex border border-slate-200">
-               <button onClick={() => setView('LIST')} className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-xl flex items-center gap-2 transition-all ${view === 'LIST' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}><List className="h-3.5 w-3.5" /> Inventory</button>
+               <button onClick={() => setView('LIST')} className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-xl flex items-center gap-2 transition-all ${view === 'LIST' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}><List className="h-3.5 w-3.5" /> Registry</button>
                <button onClick={() => { setView('ADD'); setResult(null); setIsbn(''); }} className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-xl flex items-center gap-2 transition-all ${view === 'ADD' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}><Plus className="h-3.5 w-3.5" /> Acquisition</button>
-               <button onClick={() => setView('STOCKTAKE')} className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-xl flex items-center gap-2 transition-all ${view === 'STOCKTAKE' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}><PackageSearch className="h-3.5 w-3.5" /> Audit</button>
+               <button onClick={() => setView('STOCKTAKE')} className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-xl flex items-center gap-2 transition-all ${view === 'STOCKTAKE' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}><PackageSearch className="h-3.5 w-3.5" /> Inventory Audit</button>
             </div>
           </div>
         )}
@@ -252,103 +253,18 @@ const CatalogingDesk: React.FC<{ initialView?: 'ADD' | 'LIST' | 'STOCKTAKE' }> =
       )}
       
       {view === 'LIST' && !isMobile && (
-        <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden animate-fade-in-up">
-            <div className="p-8 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-                <div className="relative group">
-                    <Search className="h-4 w-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <input 
-                        type="text" 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        className="pl-12 pr-6 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm w-96 focus:border-blue-500 outline-none transition-all shadow-sm" 
-                        placeholder="Search by Title, Author, or ISBN..." 
-                    />
-                </div>
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => { setView('ADD'); startBlankAsset(); }}
-                        className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 hover:bg-slate-800 transition-all"
-                    >
-                        <Plus className="h-4 w-4" /> Add Asset
-                    </button>
-                    {selectedBookIds.size > 0 && (
-                        <button onClick={() => handlePrintRequest(inventory.filter(b => selectedBookIds.has(b.id)))} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
-                           <Printer className="h-4 w-4" /> Print Labels ({selectedBookIds.size})
-                        </button>
-                    )}
-                </div>
-            </div>
-            
-            <div className="flex-1 overflow-auto scrollbar-thin">
-                <table className="min-w-full divide-y divide-slate-100">
-                    <thead className="bg-slate-50/80 sticky top-0 z-10 backdrop-blur">
-                        <tr>
-                            <th className="px-8 py-4 text-left"><input type="checkbox" checked={selectedBookIds.size > 0 && selectedBookIds.size >= inventory.length} onChange={() => { if (selectedBookIds.size >= inventory.length) setSelectedBookIds(new Set()); else setSelectedBookIds(new Set(inventory.map(b => b.id))); }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /></th>
-                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Bibliographic Identity</th>
-                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">ISBN / Barcode</th>
-                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Classification</th>
-                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                            <th className="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Management</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-50">
-                        {isLoadingList ? (
-                            <tr><td colSpan={6} className="text-center py-20"><Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto mb-2" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Holdings...</p></td></tr>
-                        ) : inventory.length === 0 ? (
-                            <tr><td colSpan={6} className="text-center py-20 text-slate-300 italic font-medium">No assets found matching current filters.</td></tr>
-                        ) : inventory.map(book => (
-                            <tr key={book.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedBookIds.has(book.id) ? 'bg-blue-50/30' : ''}`}>
-                                <td className="px-8 py-4"><input type="checkbox" checked={selectedBookIds.has(book.id)} onChange={() => { const next = new Set(selectedBookIds); if (next.has(book.id)) next.delete(book.id); else next.add(book.id); setSelectedBookIds(next); }} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /></td>
-                                <td className="px-8 py-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-10 bg-slate-100 rounded border border-slate-200 overflow-hidden shrink-0">
-                                            {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover" /> : <BookOpen className="w-full h-full p-2 text-slate-300" />}
-                                        </div>
-                                        <div className="flex flex-col gap-0.5">
-                                            <p className="text-sm font-black text-slate-800 leading-tight uppercase truncate max-w-[250px]">{book.title}</p>
-                                            <p className="text-xs font-bold text-slate-500">{book.author}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{book.isbn || 'NO ISBN'}</span>
-                                        <span className="text-[10px] font-mono font-bold text-blue-600 uppercase tracking-widest">BCID: {book.barcode_id}</span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2"><span className="text-[10px] font-black text-slate-800 font-mono">DDC {book.ddc_code}</span></div>
-                                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase"><MapPin className="h-2 w-2" /> {book.shelf_location}</p>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${book.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                        {book.status}
-                                    </span>
-                                </td>
-                                <td className="px-8 py-4 text-right">
-                                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleEditBook(book)} className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit MARC"><Edit3 className="h-4.5 w-4.5" /></button>
-                                        <button onClick={() => handlePrintRequest([book])} className="p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="Print Label"><Printer className="h-4.5 w-4.5" /></button>
-                                        <button onClick={() => handleDelete(book.id)} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="De-accession"><Trash2 className="h-4.5 w-4.5" /></button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="bg-slate-900 px-8 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3 text-slate-500">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">Thomian Catalog Integrity Enabled</span>
-                </div>
-                <div className="text-[9px] font-black text-white/40 uppercase tracking-widest">
-                    Holdings Volume: {inventory.length} Entries
-                </div>
-            </div>
-        </div>
+        <InventoryList 
+            inventory={inventory}
+            isLoading={isLoadingList}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onEdit={handleEditBook}
+            onDelete={handleDelete}
+            onPrint={(books) => handlePrintRequest(books)}
+            onAddRequested={() => { setView('ADD'); startBlankAsset(); }}
+            selectedIds={selectedBookIds}
+            setSelectedIds={setSelectedBookIds}
+        />
       )}
 
       <style>{`

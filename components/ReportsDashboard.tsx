@@ -1,8 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, PieChart, TrendingUp, AlertCircle, DollarSign, BookOpen, Printer, Download, Mail, LayoutTemplate, Library, RefreshCcw, CheckCircle, Wallet, History, UserCheck, ShieldCheck, Zap } from 'lucide-react';
+import { TrendingUp, AlertCircle, DollarSign, BookOpen, Printer, Download, Mail, LayoutTemplate, Library, RefreshCw, CheckCircle, Wallet, History, UserCheck, ShieldCheck, Zap, BarChart3, PieChart, Users, ChevronRight } from 'lucide-react';
 import { mockGetSystemStats, mockGetOverdueItems, mockGetFinancialSummary, mockGetTransactions } from '../services/mockApi';
 import { SystemStats, OverdueReportItem, Transaction } from '../types';
+import StatCard from './reports/StatCard';
+import GenreIntelligence from './reports/GenreIntelligence';
+import EngagementHub from './reports/EngagementHub';
 
 const ReportsDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'OVERDUE' | 'COLLECTION' | 'FINANCIAL'>('OVERVIEW');
@@ -35,285 +38,171 @@ const ReportsDashboard: React.FC = () => {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
   };
 
-  const handlePrint = (item: OverdueReportItem) => {
-      alert(`Printing Overdue Notice for ${item.patronName}\nBook: ${item.bookTitle}\nZPL sent to printer.`);
-  };
-
-  const handleAuditPrint = () => {
-      window.print();
-  };
-
-  const generateLetter = (item: OverdueReportItem) => {
-      const letter = `
-Dear Parent/Guardian of ${item.patronName},
-
-This is a reminder that the following library material is now ${item.daysOverdue} days overdue:
-
-Title: ${item.bookTitle}
-Due Date: ${new Date(item.dueDate).toLocaleDateString()}
-Replacement Cost: To be determined upon loss declaration.
-
-Please return this item to St. Thomas Library immediately to avoid further fines.
-
-Sincerely,
-The Librarian
-      `;
-      navigator.clipboard.writeText(letter);
-      alert("Letter copied to clipboard.");
-  };
-
   if (loading || !stats) {
       return (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <RefreshCcw className="h-10 w-10 animate-spin mb-4" />
-              <p>Aggregating Library Analytics...</p>
+              <RefreshCw className="h-12 w-12 animate-spin mb-6 text-sky-500" />
+              <p className="text-xs font-black uppercase tracking-[0.4em] animate-pulse">Aggregating Global Metrics...</p>
           </div>
       );
   }
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto h-full flex flex-col gap-8 animate-fade-in-up">
+    <div className="p-6 md:p-10 max-w-[1700px] mx-auto h-full flex flex-col gap-10 animate-fade-in-up pb-32">
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+        {/* Superior Header Control */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 print:hidden">
             <div>
-                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <TrendingUp className="h-6 w-6 text-slate-600" />
-                    Reporting & Analytics
+                <h2 className="text-3xl font-black text-slate-900 flex items-center gap-4 tracking-tighter uppercase">
+                    <TrendingUp className="h-10 w-10 text-sky-600" /> System Analytics
                 </h2>
-                <p className="text-slate-500">Real-time system health, overdue monitoring, and financial auditing.</p>
+                <p className="text-slate-500 font-medium mt-1">Cross-dimensional collection audit and reading behavior intelligence.</p>
             </div>
-            <div className="bg-slate-100 p-1 rounded-lg flex self-start md:self-auto">
-                <button 
-                    onClick={() => setActiveTab('OVERVIEW')}
-                    className={`px-4 py-2 text-sm font-bold rounded-md flex items-center gap-2 transition-all ${activeTab === 'OVERVIEW' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <LayoutTemplate className="h-4 w-4" /> Overview
-                </button>
-                <button 
-                    onClick={() => setActiveTab('FINANCIAL')}
-                    className={`px-4 py-2 text-sm font-bold rounded-md flex items-center gap-2 transition-all ${activeTab === 'FINANCIAL' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Wallet className="h-4 w-4" /> Financial Audit
-                </button>
-                <button 
-                    onClick={() => setActiveTab('OVERDUE')}
-                    className={`px-4 py-2 text-sm font-bold rounded-md flex items-center gap-2 transition-all ${activeTab === 'OVERDUE' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <AlertCircle className="h-4 w-4" /> Overdue ({stats.overdueLoans})
-                </button>
-                <button 
-                    onClick={() => setActiveTab('COLLECTION')}
-                    className={`px-4 py-2 text-sm font-bold rounded-md flex items-center gap-2 transition-all ${activeTab === 'COLLECTION' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Library className="h-4 w-4" /> Collection
-                </button>
+            
+            <div className="bg-slate-100 p-1.5 rounded-[1.5rem] flex flex-wrap gap-1 shadow-inner border border-slate-200 self-start">
+                <button onClick={() => setActiveTab('OVERVIEW')} className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-2.5 transition-all ${activeTab === 'OVERVIEW' ? 'bg-white text-sky-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}><LayoutTemplate className="h-4 w-4" /> Overview</button>
+                <button onClick={() => setActiveTab('COLLECTION')} className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-2.5 transition-all ${activeTab === 'COLLECTION' ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}><Library className="h-4 w-4" /> Collection</button>
+                <button onClick={() => setActiveTab('FINANCIAL')} className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-2.5 transition-all ${activeTab === 'FINANCIAL' ? 'bg-white text-emerald-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}><Wallet className="h-4 w-4" /> Financials</button>
+                <button onClick={() => setActiveTab('OVERDUE')} className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-2.5 transition-all ${activeTab === 'OVERDUE' ? 'bg-white text-rose-600 shadow-md ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'}`}><AlertCircle className="h-4 w-4" /> Risks ({overdues.length})</button>
             </div>
         </div>
 
-        {/* OVERVIEW TAB */}
+        {/* OVERVIEW MODE */}
         {activeTab === 'OVERVIEW' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Collection</p>
-                        <p className="text-3xl font-bold text-slate-800 mt-1">{stats.totalItems}</p>
-                        <p className="text-xs text-slate-400 mt-1">Books & Media</p>
+            <div className="space-y-10 animate-fade-in">
+                {/* KPI Tier */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard label="Circulation Load" value={stats.activeLoans} subtext="Active Outbound Loans" icon={TrendingUp} colorClass="text-sky-600 bg-sky-50 text-sky-600 border-sky-100" />
+                    <StatCard label="Asset Retention" value={stats.totalItems - stats.activeLoans - stats.lostItems} subtext="On-Shelf Availability" icon={BookOpen} colorClass="text-emerald-600 bg-emerald-50 text-emerald-600 border-emerald-100" />
+                    <StatCard label="Collection Value" value={formatCurrency(stats.totalValue)} subtext="Core Holdings Appraisal" icon={DollarSign} colorClass="text-indigo-600 bg-indigo-50 text-indigo-600 border-indigo-100" />
+                    <StatCard label="Overdue Risks" value={overdues.length} subtext="Pending Escalations" icon={AlertCircle} colorClass="text-rose-600 bg-rose-50 text-rose-600 border-rose-100" />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[600px]">
+                    <div className="lg:col-span-4">
+                        <GenreIntelligence data={stats.itemsByClassification} totalBooks={stats.totalItems} />
                     </div>
-                    <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
-                        <BookOpen className="h-6 w-6" />
+                    <div className="lg:col-span-8">
+                        <EngagementHub topReaders={stats.topReaders} topClasses={stats.topClasses} />
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Active Circulation</p>
-                        <p className="text-3xl font-bold text-indigo-600 mt-1">{stats.activeLoans}</p>
-                        <p className="text-xs text-slate-400 mt-1">Items currently on loan</p>
-                    </div>
-                    <div className="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
-                        <TrendingUp className="h-6 w-6" />
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Overdue Items</p>
-                        <p className={`text-3xl font-bold mt-1 ${stats.overdueLoans > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                            {stats.overdueLoans}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Require attention</p>
-                    </div>
-                    <div className="h-12 w-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6" />
-                    </div>
-                </div>
-
-                {/* Cloud Status Card */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
+                {/* Acquisition Velocity */}
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-10">
                         <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">AI Cloud Status</p>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <span className="text-sm font-bold text-slate-700">Quota Active</span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-1">Gemini-3 Flash • Free Tier</p>
+                            <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Acquisition Velocity</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Net collection growth (5 Month History)</p>
                         </div>
-                        <Zap className="h-5 w-5 text-amber-400 fill-current" />
+                        <Zap className="h-6 w-6 text-amber-400" />
                     </div>
-                    <div className="mt-2 pt-2 border-t border-slate-100">
-                        <p className="text-[9px] text-slate-400 font-medium">Auto-Reset: Midnight (PT)</p>
-                    </div>
-                </div>
-
-                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4">Inventory Status</h3>
-                    <div className="space-y-4">
-                        {Object.entries(stats.itemsByStatus).map(([status, count]) => {
-                             const countNum = count as number;
-                             const pct = (countNum / stats.totalItems) * 100;
-                             let color = 'bg-slate-200';
-                             if (status === 'AVAILABLE') color = 'bg-green-500';
-                             if (status === 'LOANED') color = 'bg-indigo-500';
-                             if (status === 'LOST') color = 'bg-red-500';
-                             if (status === 'HELD') color = 'bg-purple-500';
-
-                             return (
-                                 <div key={status}>
-                                     <div className="flex justify-between text-xs mb-1">
-                                         <span className="font-bold text-slate-600">{status}</span>
-                                         <span className="text-slate-400">{countNum} ({pct.toFixed(1)}%)</span>
-                                     </div>
-                                     <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                         <div className={`h-full ${color}`} style={{ width: `${pct}%` }}></div>
-                                     </div>
-                                 </div>
-                             );
-                        })}
-                    </div>
-                </div>
-
-                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4">Shelf Space Utilization</h3>
-                    <div className="flex items-end gap-4 h-40 border-b border-slate-100 pb-2">
-                        {Object.entries(stats.itemsByShelf).map(([shelf, count]) => {
-                            const shelfValues = Object.values(stats.itemsByShelf) as number[];
-                            const max = Math.max(...shelfValues);
-                            const countNum = count as number;
-                            const height = (countNum / max) * 100;
+                    <div className="flex items-end gap-12 h-48 px-10">
+                        {stats.acquisitionHistory.map((point) => {
+                            const maxVal = Math.max(...stats.acquisitionHistory.map(h => h.count));
+                            const height = (point.count / maxVal) * 100;
                             return (
-                                <div key={shelf} className="flex-1 flex flex-col justify-end group">
-                                    <div 
-                                        className="bg-blue-200 group-hover:bg-blue-400 transition-colors rounded-t w-full relative" 
-                                        style={{ height: `${height}%` }}
-                                    >
-                                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {countNum}
-                                        </span>
+                                <div key={point.month} className="flex-1 flex flex-col items-center group">
+                                    <div className="w-full relative flex items-end justify-center h-full">
+                                        <div className="absolute top-0 w-px h-full bg-slate-50"></div>
+                                        <div 
+                                            className="w-16 bg-slate-900 group-hover:bg-sky-500 rounded-t-2xl transition-all duration-700 ease-out relative z-10 shadow-lg shadow-slate-100" 
+                                            style={{ height: `${height}%` }}
+                                        >
+                                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all pointer-events-none shadow-xl">
+                                                +{point.count}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-xs text-center text-slate-500 mt-2 font-medium">{shelf}</span>
+                                    <span className="mt-6 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-900 transition-colors">{point.month}</span>
                                 </div>
-                            )
+                            );
                         })}
                     </div>
                 </div>
             </div>
         )}
 
-        {/* FINANCIAL AUDIT TAB */}
+        {/* FINANCIALS MODE */}
         {activeTab === 'FINANCIAL' && financials && (
-            <div className="space-y-8 animate-fade-in">
-                <div id="audit-print-header" className="hidden print:block text-center mb-8">
-                    <h1 className="text-2xl font-black">ST. THOMAS LIBRARY FINANCIAL AUDIT</h1>
-                    <p className="text-sm">Generated on: {new Date().toLocaleString()}</p>
-                    <hr className="my-4 border-slate-900 border-dashed" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-emerald-600 text-white p-8 rounded-[2rem] shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                        <Wallet className="absolute -top-6 -right-6 h-32 w-32 opacity-10 rotate-12 group-hover:rotate-0 transition-transform" />
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Expected Cash (In-Drawer)</p>
-                        <p className="text-5xl font-black tracking-tighter mt-2">{formatCurrency(financials.totalCollected)}</p>
-                        <p className="text-xs font-bold mt-4 flex items-center gap-2">
-                            <ShieldCheck className="h-4 w-4" /> System Verified Ledger
-                        </p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unpaid Overdue Fines</p>
-                        <p className="text-4xl font-black text-slate-800 mt-2">{formatCurrency(financials.totalFinesAssessed - financials.totalCollected)}</p>
-                        <div className="mt-4 flex items-center gap-4 text-xs font-bold">
-                            <span className="text-amber-600">Total Assessed: {formatCurrency(financials.totalFinesAssessed)}</span>
-                            <span className="text-slate-300">|</span>
-                            <span className="text-blue-600">Waived: {formatCurrency(financials.totalWaived)}</span>
+            <div className="space-y-10 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-emerald-600 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-emerald-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-24 -mt-24 group-hover:bg-white/20 transition-all"></div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">Verified Cash Liquid</p>
+                        <p className="text-6xl font-black tracking-tighter mt-4 font-mono">{formatCurrency(financials.totalCollected)}</p>
+                        <div className="mt-8 flex items-center gap-3 bg-white/10 p-3 rounded-2xl border border-white/10">
+                            <ShieldCheck className="h-5 w-5 text-emerald-300" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Drawer In-Sync Protocol Active</span>
                         </div>
                     </div>
 
-                    <div className="bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Replacement Assessments</p>
-                        <p className="text-4xl font-black text-slate-800 mt-2">{formatCurrency(financials.totalReplacementsAssessed)}</p>
-                        <p className="text-xs text-slate-400 font-bold mt-4 uppercase tracking-tighter">Verified Lost Books Asset Loss</p>
+                    <div className="bg-white border-2 border-slate-100 p-10 rounded-[2.5rem] flex flex-col justify-between group hover:border-sky-500 transition-colors">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Outstanding Fines</p>
+                            <p className="text-4xl font-black text-slate-800 mt-2 font-mono">{formatCurrency(financials.totalFinesAssessed - financials.totalCollected)}</p>
+                        </div>
+                        <div className="flex gap-4 mt-6">
+                            <div className="bg-amber-50 px-4 py-2 rounded-xl border border-amber-100">
+                                <p className="text-[8px] font-black text-amber-600 uppercase mb-0.5">Assessed</p>
+                                <p className="text-xs font-black text-amber-700">{formatCurrency(financials.totalFinesAssessed)}</p>
+                            </div>
+                            <div className="bg-sky-50 px-4 py-2 rounded-xl border border-sky-100">
+                                <p className="text-[8px] font-black text-sky-600 uppercase mb-0.5">Waived</p>
+                                <p className="text-xs font-black text-sky-700">{formatCurrency(financials.totalWaived)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-xl flex flex-col justify-between">
+                         <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Asset Replacement Levy</p>
+                            <p className="text-4xl font-black text-white mt-2 font-mono">{formatCurrency(financials.totalReplacementsAssessed)}</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-2">Verified Losses Pending Reconciliation</p>
+                         </div>
+                         <button className="w-full mt-6 py-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Audit Lost Titles</button>
                     </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden flex flex-col">
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 print:hidden">
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden">
+                    <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <History className="h-6 w-6 text-slate-400" />
-                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">End-of-Day Cash Ledger</h3>
+                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Financial Stream Audit</h3>
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={handleAuditPrint} className="bg-white border-2 border-slate-200 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
-                                <Printer className="h-4 w-4" /> Print Audit Report
-                            </button>
-                        </div>
+                        <button onClick={() => window.print()} className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg active:scale-95 transition-all"><Printer className="h-4 w-4" /> Export Audit Log</button>
                     </div>
-
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-slate-100">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
-                                    <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Processed By</th>
-                                    <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Patron ID</th>
-                                    <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                                    <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Method</th>
-                                    <th className="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                    <th className="px-8 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Journal Timestamp</th>
+                                    <th className="px-8 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Controller</th>
+                                    <th className="px-8 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Entity</th>
+                                    <th className="px-8 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                                    <th className="px-8 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-50">
-                                {transactions.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-8 py-16 text-center text-slate-400 italic">No transactions recorded for this period.</td></tr>
-                                ) : (
-                                    transactions.map(txn => (
-                                        <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-4 text-xs font-mono text-slate-500">{new Date(txn.timestamp).toLocaleString()}</td>
-                                            <td className="px-8 py-4">
-                                                <span className="flex items-center gap-2 text-xs font-black text-slate-700">
-                                                    <UserCheck className="h-3 w-3 text-blue-500" /> {txn.librarian_id}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-4 text-xs font-bold text-slate-600">{txn.patron_id}</td>
-                                            <td className="px-8 py-4">
-                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                                                    txn.type.includes('PAYMENT') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                                                    txn.type === 'WAIVE' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                                                }`}>
-                                                    {txn.type.replace('_', ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                                <span className={`text-[10px] font-black uppercase ${txn.method === 'CASH' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                    {txn.method}
-                                                </span>
-                                            </td>
-                                            <td className={`px-8 py-4 text-right font-mono font-black ${txn.type.includes('PAYMENT') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                {txn.type.includes('PAYMENT') ? '-' : '+'}{formatCurrency(txn.amount)}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
+                                {transactions.map(txn => (
+                                    <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-8 py-5 text-xs font-mono font-bold text-slate-500">{new Date(txn.timestamp).toLocaleString()}</td>
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-6 w-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100"><ShieldCheck className="h-3 w-3" /></div>
+                                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">{txn.librarian_id}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-5 font-mono text-xs text-slate-400">{txn.patron_id}</td>
+                                        <td className="px-8 py-5">
+                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider ${txn.type.includes('PAYMENT') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                {txn.type.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className={`px-8 py-5 text-right font-mono font-black ${txn.type.includes('PAYMENT') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {txn.type.includes('PAYMENT') ? '–' : '+'}{formatCurrency(txn.amount)}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
@@ -321,93 +210,95 @@ The Librarian
             </div>
         )}
 
-        {/* OVERDUE REPORT */}
+        {/* OVERDUE RISKS MODE */}
         {activeTab === 'OVERDUE' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                     <div>
-                         <h3 className="font-bold text-slate-800">Overdue Items Report</h3>
-                         <p className="text-xs text-slate-500">Items past their due date requiring action.</p>
+            <div className="space-y-8 animate-fade-in">
+                 <div className="bg-white border-2 border-rose-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8 bg-gradient-to-br from-white to-rose-50/20">
+                     <div className="flex items-center gap-6">
+                        <div className="h-20 w-20 bg-rose-100 text-rose-600 rounded-[2rem] flex items-center justify-center border-2 border-rose-200 animate-pulse">
+                            <AlertCircle className="h-10 w-10" />
+                        </div>
+                        <div>
+                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">Escalation Pool</h3>
+                            <p className="text-slate-500 font-medium max-w-sm">Items past their return threshold requiring parent communication.</p>
+                        </div>
                      </div>
-                     <div className="flex gap-2">
-                         <button className="px-3 py-1.5 bg-white border border-slate-300 rounded text-xs font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50">
-                             <Download className="h-3 w-3" /> Export CSV
-                         </button>
-                         <button className="px-3 py-1.5 bg-white border border-slate-300 rounded text-xs font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50">
-                             <Printer className="h-3 w-3" /> Print List
-                         </button>
+                     <div className="flex gap-3">
+                         <button className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-slate-800 transition-all"><Printer className="h-4 w-4" /> Batch Call-Slips</button>
+                         <button className="px-6 py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"><Download className="h-4 w-4" /> Export Pool</button>
                      </div>
                  </div>
 
-                 <div className="flex-1 overflow-auto">
-                     {overdues.length === 0 ? (
-                         <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                             <CheckCircle className="h-12 w-12 text-green-100 mb-2" />
-                             <p>No overdue items found. Great job!</p>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {overdues.map(item => (
+                         <div key={item.loanId} className="bg-white border border-slate-100 p-8 rounded-[2rem] shadow-sm hover:shadow-xl transition-all group relative overflow-hidden border-l-8 border-l-rose-500">
+                             <div className="flex justify-between items-start mb-6">
+                                 <div>
+                                     <p className="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">{item.daysOverdue} Days Past Protocol</p>
+                                     <h4 className="text-lg font-black text-slate-800 leading-tight uppercase line-clamp-1">{item.bookTitle}</h4>
+                                 </div>
+                                 <button className="p-2 text-slate-300 hover:text-sky-600 transition-colors"><Mail className="h-5 w-5" /></button>
+                             </div>
+                             
+                             <div className="space-y-4 mb-8">
+                                 <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+                                     <div className="h-10 w-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xs">{item.patronName.charAt(0)}</div>
+                                     <div>
+                                         <p className="text-xs font-black text-slate-800 uppercase leading-none mb-1">{item.patronName}</p>
+                                         <p className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">{item.patronId}</p>
+                                     </div>
+                                 </div>
+                                 <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">
+                                     <span>Maturity Date:</span>
+                                     <span className="text-slate-800">{new Date(item.dueDate).toLocaleDateString()}</span>
+                                 </div>
+                             </div>
+
+                             <button className="w-full py-4 bg-slate-50 group-hover:bg-sky-600 group-hover:text-white text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2">
+                                 Issue Final Demand <ChevronRight className="h-3.5 w-3.5" />
+                             </button>
                          </div>
-                     ) : (
-                         <table className="min-w-full divide-y divide-slate-200">
-                             <thead className="bg-slate-50 sticky top-0">
-                                 <tr>
-                                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Patron</th>
-                                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Book</th>
-                                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Due Date</th>
-                                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                     <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-                                 </tr>
-                             </thead>
-                             <tbody className="bg-white divide-y divide-slate-200">
-                                 {overdues.map((item) => (
-                                     <tr key={item.loanId} className="hover:bg-slate-50 transition-colors">
-                                         <td className="px-6 py-4">
-                                             <p className="font-bold text-sm text-slate-800">{item.patronName}</p>
-                                             <p className="text-xs text-slate-500">{item.patronGroup} • {item.patronId}</p>
-                                         </td>
-                                         <td className="px-6 py-4">
-                                             <p className="text-sm text-slate-800">{item.bookTitle}</p>
-                                             <p className="text-xs font-mono text-slate-500">{item.bookBarcode}</p>
-                                         </td>
-                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                             {new Date(item.dueDate).toLocaleDateString()}
-                                         </td>
-                                         <td className="px-6 py-4 whitespace-nowrap">
-                                             <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-200">
-                                                 {item.daysOverdue} Days Late
-                                             </span>
-                                         </td>
-                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                             <div className="flex justify-end gap-2">
-                                                 <button 
-                                                    onClick={() => generateLetter(item)}
-                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" 
-                                                    title="Copy Email Letter"
-                                                 >
-                                                     <Mail className="h-4 w-4" />
-                                                 </button>
-                                                 <button 
-                                                    onClick={() => handlePrint(item)}
-                                                    className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded" 
-                                                    title="Print Reminder Slip"
-                                                 >
-                                                     <Printer className="h-4 w-4" />
-                                                 </button>
-                                             </div>
-                                         </td>
-                                     </tr>
-                                 ))}
-                             </tbody>
-                         </table>
-                     )}
+                     ))}
                  </div>
             </div>
         )}
         
-        {/* COLLECTION BREAKDOWN */}
+        {/* COLLECTION INSIGHTS MODE */}
         {activeTab === 'COLLECTION' && (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 text-center text-slate-400 italic">
-                <Library className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p>Advanced collection analysis tools (Turnover Rate, Weeding Candidates) would appear here.</p>
-                <p className="text-sm mt-2">See Overview tab for current shelf distribution.</p>
+            <div className="space-y-10 animate-fade-in">
+                <div className="bg-slate-900 p-12 rounded-[3rem] text-white flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[100px] -mr-64 -mt-64"></div>
+                    <div className="relative z-10 flex flex-col items-center text-center md:items-start md:text-left gap-6">
+                        <div className="p-4 bg-sky-500 text-slate-900 rounded-[2rem] shadow-2xl shadow-sky-500/30">
+                            <Library className="h-12 w-12" />
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-3">Deep Collection Audit</h3>
+                            <p className="text-slate-400 font-medium max-w-lg">Advanced metrics for collection hygiene, subject-matter saturation, and physical space utilization.</p>
+                        </div>
+                    </div>
+                    <div className="flex-1 grid grid-cols-2 gap-4 relative z-10 w-full md:w-auto">
+                        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
+                            <p className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1">Turnover Rate</p>
+                            <p className="text-4xl font-black text-white">4.2<span className="text-sm font-bold text-slate-500 ml-2">loans/vol</span></p>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
+                            <p className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1">Legacy Load</p>
+                            <p className="text-4xl font-black text-white">12%<span className="text-sm font-bold text-slate-500 ml-2">&gt;15yrs</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
+                    <GenreIntelligence data={stats.itemsByClassification} totalBooks={stats.totalItems} />
+                    <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 flex flex-col items-center justify-center text-center gap-6">
+                        <div className="h-32 w-32 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                            <RefreshCw className="h-16 w-16 opacity-10" />
+                        </div>
+                        <h4 className="text-xl font-black text-slate-400 uppercase tracking-tight">Spatial Heatmap Unavailable</h4>
+                        <p className="text-xs text-slate-400 font-medium max-w-xs uppercase leading-relaxed">Map logic integration required for shelf-level checkout hotzones.</p>
+                    </div>
+                </div>
             </div>
         )}
 

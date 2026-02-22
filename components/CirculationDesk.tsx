@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeftRight, User, BookOpen, CheckCircle, AlertTriangle, XCircle, Search, Calendar, DollarSign, ScanLine, ArrowRight, Camera, Zap, Smartphone, Monitor, Loader2, History, ChevronUp, ChevronDown, X, Trash2, UserCheck, ShieldCheck, CreditCard } from 'lucide-react';
-import { mockGetPatronById, mockGetBookByBarcode, mockProcessReturn, mockCheckoutBooks } from '../services/mockApi';
-import { Patron, Book, CheckInResult } from '../types';
+import { ArrowLeftRight, User, BookOpen, CheckCircle, AlertTriangle, XCircle, Search, Calendar, DollarSign, ScanLine, ArrowRight, Camera, Zap, Smartphone, Monitor, Loader2, History, ChevronUp, ChevronDown, X, Trash2, UserCheck, ShieldCheck, CreditCard, Lock } from 'lucide-react';
+import { mockGetPatronById, mockGetBookByBarcode, mockProcessReturn, mockCheckoutBooks, mockGetMapConfig } from '../services/mockApi';
+import { Patron, Book, CheckInResult, MapConfig } from '../types';
 import MobileScanner from './MobileScanner';
 
 const CirculationDesk: React.FC = () => {
@@ -13,6 +13,7 @@ const CirculationDesk: React.FC = () => {
   const [processingCheckout, setProcessingCheckout] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [flash, setFlash] = useState<boolean>(false);
+  const [systemConfig, setSystemConfig] = useState<MapConfig | null>(null);
   
   // Session State
   const [currentPatron, setCurrentPatron] = useState<Patron | null>(null);
@@ -25,16 +26,17 @@ const CirculationDesk: React.FC = () => {
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
+    mockGetMapConfig().then(setSystemConfig);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Hardware focus
   useEffect(() => {
-    if (!isScannerOpen) {
+    if (!isScannerOpen && !(mode === 'CHECK_OUT' && systemConfig?.circulationLocked)) {
       const timer = setTimeout(() => inputRef.current?.focus(), 100);
       return () => clearTimeout(timer);
     }
-  }, [mode, isScannerOpen, currentPatron]);
+  }, [mode, isScannerOpen, currentPatron, systemConfig]);
 
   const triggerFlash = () => {
       setFlash(true);
@@ -42,6 +44,8 @@ const CirculationDesk: React.FC = () => {
   };
 
   const processScan = async (value: string) => {
+    if (mode === 'CHECK_OUT' && systemConfig?.circulationLocked) return;
+    
     const query = value.trim();
     if (!query) return;
     setLoading(true);
@@ -59,8 +63,8 @@ const CirculationDesk: React.FC = () => {
         if (!currentPatron) {
             const patron = await mockGetPatronById(query);
             if (patron) {
-                if (patron.is_blocked) {
-                    alert(`ACCESS BLOCKED: ${patron.full_name} has outstanding fines ($${patron.fines.toFixed(2)}).`);
+                if (patron.is_blocked || patron.is_archived) {
+                    alert(`ACCESS BLOCKED: Patron is ${patron.is_archived ? 'ARCHIVED (Graduated)' : 'BLOCKED (Fines)'}.`);
                 } else {
                     setCurrentPatron(patron);
                     triggerFlash();
@@ -112,7 +116,6 @@ const CirculationDesk: React.FC = () => {
     <div className="h-full flex flex-col bg-slate-100 font-sans">
       {isScannerOpen && <MobileScanner onScan={processScan} onClose={() => setIsScannerOpen(false)} />}
       
-      {/* Haptic Flash */}
       {flash && (
           <div className="fixed inset-0 z-[300] bg-white/20 pointer-events-none transition-opacity"></div>
       )}
@@ -141,110 +144,124 @@ const CirculationDesk: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 grid grid-cols-12 gap-4 md:gap-6 min-h-0 overflow-y-auto lg:overflow-hidden">
+      <div className="flex-1 p-4 md:p-6 grid grid-cols-12 gap-4 md:gap-6 min-h-0 overflow-y-auto lg:overflow-hidden relative">
         {/* Interaction Column */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 h-full">
-            <div className={`p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border-4 transition-all duration-500 relative overflow-hidden flex flex-col items-center justify-center gap-4 md:gap-6 ${mode === 'CHECK_IN' ? 'bg-blue-600 border-blue-700' : 'bg-emerald-600 border-emerald-700'}`}>
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                    <svg width="100%" height="100%"><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/></pattern><rect width="100%" height="100%" fill="url(#grid)" /></svg>
+            
+            {/* Global Lock Overlay for Checkout */}
+            {mode === 'CHECK_OUT' && systemConfig?.circulationLocked ? (
+                <div className="flex-1 bg-white rounded-[2.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center p-12 text-center animate-fade-in">
+                    <div className="h-24 w-24 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-8 border-2 border-rose-100 shadow-lg">
+                        <Lock className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-3xl font-black text-slate-800 uppercase tracking-tight mb-4">Check-Out Restricted</h3>
+                    <p className="text-slate-500 font-medium max-w-md leading-relaxed text-lg">
+                        The core circulation engine is currently <span className="text-rose-600 font-black">LOCKED</span> for End-of-Year stocktake. No new items can be issued at this time.
+                    </p>
+                    <div className="mt-10 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                        <ShieldCheck className="h-5 w-5 text-blue-500" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Returns are still permitted in Check-In mode.</span>
+                    </div>
                 </div>
-                
-                <div className="relative z-10 w-full max-w-xl flex flex-col gap-4 md:gap-5">
-                    <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md flex items-center justify-between border border-white/10 shadow-lg">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center shadow-inner">
-                                <ScanLine className="h-5 w-5 text-slate-800" />
+            ) : (
+                <>
+                <div className={`p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border-4 transition-all duration-500 relative overflow-hidden flex flex-col items-center justify-center gap-4 md:gap-6 ${mode === 'CHECK_IN' ? 'bg-blue-600 border-blue-700' : 'bg-emerald-600 border-emerald-700'}`}>
+                    <div className="absolute inset-0 opacity-10 pointer-events-none">
+                        <svg width="100%" height="100%"><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/></pattern><rect width="100%" height="100%" fill="url(#grid)" /></svg>
+                    </div>
+                    
+                    <div className="relative z-10 w-full max-w-xl flex flex-col gap-4 md:gap-5">
+                        <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md flex items-center justify-between border border-white/10 shadow-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center shadow-inner">
+                                    <ScanLine className="h-5 w-5 text-slate-800" />
+                                </div>
+                                <span className="text-white text-[10px] font-black uppercase tracking-widest">Active Channel</span>
                             </div>
-                            <span className="text-white text-[10px] font-black uppercase tracking-widest">Active Channel</span>
+                            <div className="flex gap-1.5">
+                                {[1,2,3].map(i => <div key={i} className="h-1 w-5 bg-white/20 rounded-full animate-pulse"></div>)}
+                            </div>
                         </div>
-                        <div className="flex gap-1.5">
-                             {[1,2,3].map(i => <div key={i} className="h-1 w-5 bg-white/20 rounded-full animate-pulse"></div>)}
-                        </div>
-                    </div>
-                    
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && processScan(input)}
-                        className="w-full py-4 md:py-5 px-6 md:px-10 rounded-[1.5rem] md:rounded-[2rem] text-2xl md:text-3xl font-mono text-center shadow-2xl focus:ring-8 focus:ring-white/10 outline-none uppercase placeholder-white/20 bg-white border-4 border-transparent focus:border-white/20 transition-all"
-                        placeholder={loading ? "SYNCING..." : "READY TO SCAN..."}
-                        disabled={loading}
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => setIsScannerOpen(true)} className="py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 flex items-center justify-center gap-2">
-                            <Camera className="h-3.5 w-3.5" /> Camera Scan
-                        </button>
-                        <div className="py-3 bg-black/20 text-white/40 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 border border-white/5">
-                            <Monitor className="h-3.5 w-3.5" /> Hardware: Sync
+                        
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && processScan(input)}
+                            className="w-full py-4 md:py-5 px-6 md:px-10 rounded-[1.5rem] md:rounded-[2rem] text-2xl md:text-3xl font-mono text-center shadow-2xl focus:ring-8 focus:ring-white/10 outline-none uppercase placeholder-white/20 bg-white border-4 border-transparent focus:border-white/20 transition-all"
+                            placeholder={loading ? "SYNCING..." : "READY TO SCAN..."}
+                            disabled={loading}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => setIsScannerOpen(true)} className="py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 flex items-center justify-center gap-2">
+                                <Camera className="h-3.5 w-3.5" /> Camera Scan
+                            </button>
+                            <div className="py-3 bg-black/20 text-white/40 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 border border-white/5">
+                                <Monitor className="h-3.5 w-3.5" /> Hardware: Sync
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Results Table (Responsive) */}
-            <div className="bg-white flex-1 min-h-[400px] lg:min-h-0 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                <div className="px-6 md:px-8 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Stream</h3>
-                    <History className="h-4 w-4 text-slate-300" />
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
-                    {mode === 'CHECK_IN' ? (
-                        returnHistory.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-300">
-                                <ScanLine className="h-12 w-12 mb-4 opacity-5" />
-                                <p className="text-sm font-black uppercase tracking-tighter opacity-20 text-center">Scan returned book to begin cycle...</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {returnHistory.map((res, i) => (
-                                    <div key={i} className="flex items-center gap-4 md:gap-5 p-4 md:p-5 bg-slate-50 border border-slate-100 rounded-2xl animate-fade-in-up">
-                                        <div className={`h-10 md:h-12 w-10 md:w-12 rounded-xl flex items-center justify-center shrink-0 ${res.fine_amount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600 shadow-sm'}`}>
-                                            <CheckCircle className="h-5 md:h-6 w-5 md:w-6" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-base md:text-lg font-black text-slate-800 truncate leading-none mb-1">{res.book.title}</p>
-                                            <p className="text-[9px] font-mono text-slate-400 uppercase tracking-widest truncate">ID: {res.book.barcode_id} • Shelf: {res.book.shelf_location}</p>
-                                        </div>
-                                        {res.fine_amount > 0 && (
-                                            <div className="text-right pl-4 border-l border-slate-200">
-                                                <p className="text-[8px] font-black text-rose-500 uppercase">Fine</p>
-                                                <p className="text-xl font-black text-rose-600 font-mono tracking-tighter">${res.fine_amount.toFixed(2)}</p>
+                {/* Results Table (Responsive) */}
+                <div className="bg-white flex-1 min-h-[400px] lg:min-h-0 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                    <div className="px-6 md:px-8 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Stream</h3>
+                        <History className="h-4 w-4 text-slate-300" />
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
+                        {mode === 'CHECK_IN' ? (
+                            returnHistory.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-300">
+                                    <ScanLine className="h-12 w-12 mb-4 opacity-5" />
+                                    <p className="text-sm font-black uppercase tracking-tighter opacity-20 text-center">Scan returned book to begin cycle...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {returnHistory.map((res, i) => (
+                                        <div key={i} className="flex items-center gap-4 md:gap-5 p-4 md:p-5 bg-slate-50 border border-slate-100 rounded-2xl animate-fade-in-up">
+                                            <div className={`h-10 md:h-12 w-10 md:w-12 rounded-xl flex items-center justify-center shrink-0 ${res.fine_amount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600 shadow-sm'}`}>
+                                                <CheckCircle className="h-5 md:h-6 w-5 md:w-6" />
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    ) : (
-                        scannedBooks.length === 0 ? (
-                             <div className="h-full flex flex-col items-center justify-center text-slate-300">
-                                <UserCheck className="h-12 w-12 mb-4 opacity-5" />
-                                <p className="text-sm font-black uppercase tracking-tighter opacity-20 text-center">Scan Patron card to start session...</p>
-                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {scannedBooks.map((book, i) => (
-                                    <div key={i} className="flex justify-between items-center p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xs">{i+1}</div>
-                                            <div className="overflow-hidden">
-                                                <p className="font-black text-slate-800 text-base leading-none mb-1 truncate">{book.title}</p>
-                                                <p className="text-[9px] font-mono text-slate-400 tracking-widest uppercase">ID: {book.barcode_id}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-base md:text-lg font-black text-slate-800 truncate leading-none mb-1">{res.book.title}</p>
+                                                <p className="text-[9px] font-mono text-slate-400 uppercase tracking-widest truncate">ID: {res.book.barcode_id} • Shelf: {res.book.shelf_location}</p>
                                             </div>
                                         </div>
-                                        <button onClick={() => setScannedBooks(prev => prev.filter((_, idx) => idx !== i))} className="p-2 text-slate-200 hover:text-rose-500 transition-colors shrink-0">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    )}
+                                    ))}
+                                </div>
+                            )
+                        ) : (
+                            scannedBooks.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-300">
+                                    <UserCheck className="h-12 w-12 mb-4 opacity-5" />
+                                    <p className="text-sm font-black uppercase tracking-tighter opacity-20 text-center">Scan Patron card to start session...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {scannedBooks.map((book, i) => (
+                                        <div key={i} className="flex justify-between items-center p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-10 w-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xs">{i+1}</div>
+                                                <div className="overflow-hidden">
+                                                    <p className="font-black text-slate-800 text-base leading-none mb-1 truncate">{book.title}</p>
+                                                    <p className="text-[9px] font-mono text-slate-400 tracking-widest uppercase">ID: {book.barcode_id}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setScannedBooks(prev => prev.filter((_, idx) => idx !== i))} className="p-2 text-slate-200 hover:text-rose-500 transition-colors shrink-0">
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+                    </div>
                 </div>
-            </div>
+                </>
+            )}
         </div>
 
         {/* Sidebar Info Column */}
@@ -298,18 +315,8 @@ const CirculationDesk: React.FC = () => {
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Core Matrix Policy</h4>
                  </div>
                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                    System rules are derived from the <strong>Circulation Matrix</strong>. Late fees are assessed daily at Midnight. All actions are logged.
+                    System rules are derived from the <strong>Circulation Matrix</strong>. All actions are logged.
                  </p>
-                 <div className="mt-6 flex gap-3">
-                    <div className="bg-white/5 p-3 rounded-xl flex-1 border border-white/5 text-center">
-                        <p className="text-[7px] font-black text-white/30 uppercase mb-0.5">Quota</p>
-                        <p className="text-base font-black">5 Max</p>
-                    </div>
-                    <div className="bg-white/5 p-3 rounded-xl flex-1 border border-white/5 text-center">
-                        <p className="text-[7px] font-black text-white/30 uppercase mb-0.5">Term</p>
-                        <p className="text-base font-black">14 Days</p>
-                    </div>
-                 </div>
             </div>
         </div>
       </div>

@@ -3,6 +3,8 @@ export type ViewMode = 'KIOSK' | 'ADMIN';
 export type AdminTab = 'CIRCULATION' | 'CATALOG' | 'PATRONS' | 'MATRIX' | 'MAP' | 'CALENDAR' | 'REPORTS' | 'HELP' | 'SETTINGS' | 'PROFILE';
 
 export type PatronGroup = 'STUDENT' | 'TEACHER' | 'LIBRARIAN' | 'ADMINISTRATOR';
+export type SystemTheme = 'EMERALD' | 'PURPLE' | 'SKY' | 'MIDNIGHT' | 'WHITE';
+export type PatronCardTemplate = 'TRADITIONAL' | 'MODERN' | 'MINIMAL';
 
 export interface AuthUser {
     id: string;
@@ -49,8 +51,6 @@ export interface Book {
   marc_data?: Record<string, any>;
   queue_length?: number;
   last_inventoried?: string;
-  
-  // Professional ILS Fields (Koha Alignment)
   value: number; 
   edition?: string;
   series?: string;
@@ -59,14 +59,11 @@ export interface Book {
   vendor?: string;
   acquisition_date?: string;
   summary?: string;
-  
-  // New Missing Professional Fields
   publisher?: string;
   pub_year?: string;
   format?: 'HARDCOVER' | 'PAPERBACK' | 'EQUIPMENT' | 'DIGITAL' | 'PERIODICAL';
   subjects?: string[];
   cutter_number?: string;
-  
   material_type: 'REGULAR' | 'REFERENCE' | 'PERIODICAL' | 'MEDIA';
   course_reserve?: string;
   created_at?: string;
@@ -79,11 +76,13 @@ export interface Patron {
   patron_group: PatronGroup;
   class_name?: string;
   is_blocked: boolean;
+  is_archived?: boolean;
   fines: number;
   total_paid?: number;
   email?: string;
   phone?: string;
   photo_url?: string; 
+  pin: string; // Secure 4-digit PIN for Kiosk access
 }
 
 export interface MapConfig {
@@ -91,6 +90,9 @@ export interface MapConfig {
     shelves: ShelfDefinition[];
     lastUpdated: string;
     logo?: string;
+    circulationLocked?: boolean;
+    theme?: SystemTheme;
+    cardTemplate?: PatronCardTemplate;
 }
 
 export interface MapLevel {
@@ -121,8 +123,11 @@ export interface SystemStats {
   activeLoans: number;
   overdueLoans: number;
   lostItems: number;
-  itemsByShelf: Record<string, number>;
+  itemsByClassification: Record<string, { count: number, loans: number }>;
   itemsByStatus: Record<string, number>;
+  topReaders: { name: string, id: string, count: number }[];
+  topClasses: { name: string, count: number }[];
+  acquisitionHistory: { month: string, count: number }[];
 }
 
 export interface OverdueReportItem {

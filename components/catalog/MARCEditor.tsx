@@ -1,8 +1,8 @@
 
 import React, { useRef, useEffect } from 'react';
-import { BookOpen, Layers, DollarSign, Tag, Info, ImageOff, Upload, Eye, Loader2, Fingerprint, ScanLine, Bookmark, Hash, StickyNote, Building, Calendar, Package, Type, FileText } from 'lucide-react';
+import { BookOpen, Layers, DollarSign, Tag, Info, ImageOff, Upload, Eye, Loader2, Fingerprint, ScanLine, Bookmark, Hash, StickyNote, Building, Calendar, Package, Type, FileText, ChevronDown } from 'lucide-react';
 import { Book } from '../../types';
-import { getClassificationFromDDC, DEWEY_CATEGORIES } from '../../utils';
+import { getClassificationFromDDC, DEWEY_CATEGORIES, getStarterDdcForClassification } from '../../utils';
 import BookLabel from '../BookLabel';
 
 interface MARCEditorProps {
@@ -21,15 +21,13 @@ const MARCEditor: React.FC<MARCEditorProps> = ({ book, setBook, isManual, isSavi
   // Auto-detect classification and suggest call number when DDC or Author changes
   useEffect(() => {
       if (isManual && !book.id) {
-          const detectedClass = getClassificationFromDDC(book.ddc_code);
           const authorShort = (book.author || '').slice(0, 3).toUpperCase();
           const suggestedCall = book.ddc_code ? `${book.ddc_code} ${authorShort}` : '';
           
-          if (detectedClass !== book.classification || (suggestedCall && !book.call_number)) {
+          if (suggestedCall && !book.call_number) {
               setBook({ 
                   ...book, 
-                  classification: detectedClass,
-                  call_number: book.call_number || suggestedCall,
+                  call_number: suggestedCall,
                   cutter_number: authorShort
               });
           }
@@ -40,6 +38,18 @@ const MARCEditor: React.FC<MARCEditorProps> = ({ book, setBook, isManual, isSavi
       const detected = getClassificationFromDDC(val);
       setBook({ ...book, ddc_code: val, classification: detected });
   };
+
+  const handleClassificationChange = (val: string) => {
+      const starterDdc = getStarterDdcForClassification(val);
+      // Only overwrite DDC if it's currently empty or the user just changed the category
+      setBook({ 
+          ...book, 
+          classification: val, 
+          ddc_code: book.ddc_code && !starterDdc.startsWith(book.ddc_code.slice(0,1)) ? starterDdc : (book.ddc_code || starterDdc) 
+      });
+  };
+
+  const classificationOptions = Array.from(new Set(Object.values(DEWEY_CATEGORIES)));
 
   return (
     <div className={`bg-white rounded-[2.5rem] border shadow-2xl h-full flex flex-col transition-all duration-500 ${isManual ? 'border-amber-300 ring-8 ring-amber-50' : 'border-slate-100'}`}>
@@ -134,10 +144,28 @@ const MARCEditor: React.FC<MARCEditorProps> = ({ book, setBook, isManual, isSavi
                     {/* SECTION 3: HOLDINGS & TAXONOMY */}
                     <div className="space-y-6">
                         <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-2"><Tag className="h-4 w-4" /> 3. Holdings & Classification</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Classification Category</label>
+                                <div className="relative">
+                                    <select 
+                                        value={book.classification || ''} 
+                                        onChange={(e) => handleClassificationChange(e.target.value)} 
+                                        className="w-full rounded-xl border-2 border-slate-100 p-4 font-black text-slate-800 outline-none focus:border-blue-500 bg-slate-50/30 appearance-none pr-10"
+                                    >
+                                        <option value="">Auto-Detect...</option>
+                                        {classificationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">DDC (Dewey)</label>
-                                <input type="text" value={book.ddc_code || ''} onChange={(e) => handleDdcChange(e.target.value)} className="w-full rounded-xl border-2 border-slate-100 p-4 font-mono font-black text-emerald-600 outline-none focus:border-emerald-500" placeholder="530" />
+                                <input type="text" value={book.ddc_code || ''} onChange={(e) => handleDdcChange(e.target.value)} className="w-full rounded-xl border-2 border-slate-100 p-4 font-mono font-black text-emerald-600 outline-none focus:border-emerald-500 shadow-sm" placeholder="530" />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Cutter / Call</label>

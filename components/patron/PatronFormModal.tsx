@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, UserPlus, Save, GraduationCap, Phone, Mail, ShieldCheck, User, RefreshCw, Camera, Upload, Trash2, Aperture, AlertCircle } from 'lucide-react';
+import { X, UserPlus, Save, GraduationCap, Phone, Mail, ShieldCheck, User, RefreshCw, Camera, Upload, Trash2, Aperture, AlertCircle, Key, Dices, Eye, EyeOff } from 'lucide-react';
 import { Patron, PatronGroup, LibraryClass } from '../../types';
 import { mockGetClasses } from '../../services/mockApi';
 
@@ -22,11 +22,13 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
         phone: '',
         is_blocked: false,
         fines: 0,
-        photo_url: ''
+        photo_url: '',
+        pin: '1234'
     });
 
     const [classes, setClasses] = useState<LibraryClass[]>([]);
     const [isCameraActive, setIsCameraActive] = useState(false);
+    const [showPin, setShowPin] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,9 +40,32 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
     }, [isOpen]);
 
     useEffect(() => {
-        if (initialData) setFormData(initialData);
-        else setFormData({ student_id: '', full_name: '', patron_group: 'STUDENT', class_name: '', email: '', phone: '', is_blocked: false, fines: 0, photo_url: '' });
+        if (initialData) {
+            setFormData(initialData);
+        } else {
+            setFormData({ 
+                student_id: '', 
+                full_name: '', 
+                patron_group: 'STUDENT', 
+                class_name: '', 
+                email: '', 
+                phone: '', 
+                is_blocked: false, 
+                fines: 0, 
+                photo_url: '', 
+                pin: generateRandomPin() 
+            });
+        }
     }, [initialData, isOpen]);
+
+    function generateRandomPin() {
+        return Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    const handleGeneratePin = () => {
+        setFormData({ ...formData, pin: generateRandomPin() });
+        setShowPin(true);
+    };
 
     // Start Camera
     const startCamera = async () => {
@@ -104,6 +129,10 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
             alert("Class selection is mandatory for Student patrons.");
             return;
         }
+        if (!formData.pin || formData.pin.length !== 4) {
+            alert("Security PIN must be exactly 4 digits.");
+            return;
+        }
         onSave(formData);
     };
 
@@ -131,7 +160,6 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
                             </div>
                         )}
 
-                        {/* Capture Controls Overlay */}
                         {isCameraActive && (
                             <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                                 <button 
@@ -184,12 +212,6 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
                             </button>
                         )}
                     </div>
-
-                    <div className="mt-auto p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                        <p className="text-[9px] text-blue-600 font-bold uppercase leading-relaxed text-center">
-                            Portraits are cropped to 1:1 ratio for PVC identity card compliance.
-                        </p>
-                    </div>
                 </div>
 
                 {/* Main Form Fields */}
@@ -209,7 +231,7 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
 
                     <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto flex-1 scrollbar-thin">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-1">
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Unique Patron ID (Barcode)</label>
                                 <input 
                                     type="text" 
@@ -219,6 +241,37 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
                                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-mono font-bold text-slate-700 outline-none focus:border-blue-500 disabled:opacity-50"
                                     placeholder="ST-2024-XXX"
                                 />
+                            </div>
+                            <div className="md:col-span-1">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Security PIN (4-Digits)</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                        <input 
+                                            type={showPin ? "text" : "password"} 
+                                            maxLength={4}
+                                            value={formData.pin}
+                                            onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})}
+                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-10 py-3 font-mono font-black text-blue-600 outline-none focus:border-blue-500"
+                                            placeholder="••••"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowPin(!showPin)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+                                        >
+                                            {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                    <button 
+                                        type="button"
+                                        onClick={handleGeneratePin}
+                                        title="Auto-Generate PIN"
+                                        className="px-4 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 transition-all"
+                                    >
+                                        <Dices className="h-5 w-5" />
+                                    </button>
+                                </div>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Full Legal Name</label>
@@ -260,11 +313,6 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
                                         ))}
                                     </select>
                                 </div>
-                                {formData.patron_group === 'STUDENT' && !formData.class_name && (
-                                    <p className="mt-1.5 flex items-center gap-1 text-[9px] font-black text-amber-600 uppercase tracking-tighter">
-                                        <AlertCircle className="h-3 w-3" /> Class selection is mandatory for students.
-                                    </p>
-                                )}
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Email Address</label>

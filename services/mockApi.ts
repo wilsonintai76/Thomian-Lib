@@ -14,7 +14,6 @@ const STORAGE_KEY_USER = "thomian_user_profile";
 const STORAGE_KEY_TOKEN = "thomian_auth_token";
 const STORAGE_KEY_LAN_URL = "thomian_lan_url";
 
-// EMBEDDED LOGO
 const SCHOOL_CREST_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="50%" stop-color="black"/><stop offset="50%" stop-color="%23D6001C"/></linearGradient></defs><path d="M250 50Q125 70 50 50L50 280C50 400 250 480 250 480C250 480 450 400 450 280L450 50Q375 70 250 50Z" fill="url(%23g1)"/><g transform="translate(90,80) scale(0.6)"><path d="M50 100L10 100L20 40L50 0L80 40L90 100Z" fill="%23FFD700" stroke="white" stroke-width="2"/></g><g transform="translate(300,80) scale(0.6)"><path d="M10 30L80 30L100 10L110 20L90 40C90 60 70 70 40 70L20 70C10 70 0 60 10 30Z" fill="%23FFD700"/><circle cx="30" cy="15" r="10" fill="orange"/></g><g transform="translate(250,240) rotate(-30)"><rect x="-80" y="-10" width="160" height="20" fill="%23FFD700"/><rect x="60" y="-10" width="20" height="80" fill="%23FFD700"/></g><g transform="translate(20,430)"><path d="M20 50Q230 130 440 50L440 90Q230 170 20 90Z" fill="%23FFD700" stroke="black" stroke-width="2"/><text x="230" y="105" font-family="sans-serif" font-weight="900" font-size="30" text-anchor="middle" fill="black">AIM HIGHER</text></g></svg>`;
 
 const INITIAL_BOOKS: Book[] = [
@@ -198,11 +197,16 @@ export const mockGetPatrons = async (): Promise<Patron[]> => {
     const stored = localStorage.getItem(STORAGE_KEY_PATRONS);
     if (stored) return JSON.parse(stored);
     const defaults: Patron[] = [
-        { student_id: 'ST-2024-001', full_name: 'John Doe', patron_group: 'STUDENT', class_name: 'Grade 10-A', is_blocked: false, fines: 0, email: 'j.doe@stthomas.edu', phone: '+1 (555) 001-2233' },
-        { student_id: 'ST-2024-002', full_name: 'Jane Smith', patron_group: 'STUDENT', class_name: 'Grade 12-B', is_blocked: true, fines: 45.00, email: 'j.smith@stthomas.edu', phone: '+1 (555) 001-4455' },
+        { student_id: 'ST-2024-001', full_name: 'John Doe', patron_group: 'STUDENT', class_name: 'Grade 10-A', is_blocked: false, fines: 0, email: 'j.doe@stthomas.edu', phone: '+1 (555) 001-2233', pin: '1234' },
+        { student_id: 'ST-2024-002', full_name: 'Jane Smith', patron_group: 'STUDENT', class_name: 'Grade 12-B', is_blocked: true, fines: 45.00, email: 'j.smith@stthomas.edu', phone: '+1 (555) 001-4455', pin: '0000' },
     ];
     localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(defaults));
     return defaults;
+};
+
+export const mockVerifyPatron = async (id: string, pin: string): Promise<Patron | null> => {
+    const patrons = await mockGetPatrons();
+    return patrons.find(p => p.student_id === id && p.pin === pin) || null;
 };
 
 export const mockGetPatronById = async (id: string): Promise<Patron | null> => {
@@ -283,6 +287,7 @@ export const aiAnalyzeBlueprint = async (imageBase64: string, levelId: string): 
             model: 'gemini-3-flash-preview',
             contents: {
                 parts: [
+                    /* Fix: Corrected variable name from image64 to imageBase64 */
                     { inlineData: { mimeType: 'image/jpeg', data: imageBase64.split(',')[1] || imageBase64 } },
                     { text: "Analyze this library floor plan and identify shelving units. Return a JSON array." }
                 ]
@@ -414,18 +419,53 @@ export const mockCheckoutBooks = async (patronId: string, barcodes: string[]): P
 
 export const mockGetSystemStats = async (): Promise<SystemStats> => {
     const books = await mockGetBooks();
+    const patrons = await mockGetPatrons();
+    
+    const classificationStats: Record<string, { count: number, loans: number }> = {};
+    books.forEach(b => {
+        const cls = b.classification || 'General';
+        if (!classificationStats[cls]) classificationStats[cls] = { count: 0, loans: 0 };
+        classificationStats[cls].count++;
+        classificationStats[cls].loans += (b.loan_count || 0);
+    });
+
+    const statusStats: Record<string, number> = {};
+    books.forEach(b => {
+        statusStats[b.status] = (statusStats[b.status] || 0) + 1;
+    });
+
     return {
         totalItems: books.length,
         totalValue: books.reduce((acc, b) => acc + (b.value || 0), 0),
         activeLoans: books.filter(b => b.status === 'LOANED').length,
-        overdueLoans: 0,
+        overdueLoans: 2, // Mocking some overdue
         lostItems: books.filter(b => b.status === 'LOST').length,
-        itemsByShelf: { 'Shelf A': 1, 'Shelf B': 1 },
-        itemsByStatus: { 'AVAILABLE': 3 }
+        itemsByClassification: classificationStats,
+        itemsByStatus: statusStats,
+        topReaders: [
+            { name: 'Alice Wong', id: 'ST-001', count: 24 },
+            { name: 'Michael Chen', id: 'ST-002', count: 19 },
+            { name: 'Sarah Miller', id: 'ST-003', count: 15 }
+        ],
+        topClasses: [
+            { name: 'Grade 10-A', count: 142 },
+            { name: 'Grade 12-B', count: 98 },
+            { name: 'Grade 8-C', count: 76 }
+        ],
+        acquisitionHistory: [
+            { month: 'Jan', count: 12 },
+            { month: 'Feb', count: 45 },
+            { month: 'Mar', count: 22 },
+            { month: 'Apr', count: 88 },
+            { month: 'May', count: 31 }
+        ]
     };
 };
 
-export const mockGetOverdueItems = async (): Promise<OverdueReportItem[]> => [];
+export const mockGetOverdueItems = async (): Promise<OverdueReportItem[]> => [
+    { loanId: 'L-1', patronId: 'ST-001', patronName: 'Alice Wong', patronGroup: 'STUDENT', bookTitle: 'The Great Gatsby', bookBarcode: '3001', dueDate: '2024-05-10', daysOverdue: 5 },
+    { loanId: 'L-2', patronId: 'ST-005', patronName: 'James Bond', patronGroup: 'STUDENT', bookTitle: 'Quantum Physics', bookBarcode: '5502', dueDate: '2024-05-12', daysOverdue: 3 }
+];
 
 export const mockLogin = async (username: string, password: string): Promise<AuthUser | null> => {
     if (username === 'admin' && password === 'admin123') {
@@ -451,7 +491,9 @@ export const mockGetMapConfig = async (): Promise<MapConfig> => {
         lastUpdated: new Date().toISOString(),
         logo: SCHOOL_CREST_SVG,
         levels: [{ id: 'lvl_1', name: 'Main Hall', stationX: 500, stationY: 550 }],
-        shelves: []
+        shelves: [],
+        theme: 'EMERALD',
+        cardTemplate: 'TRADITIONAL'
     };
     localStorage.setItem(STORAGE_KEY_MAP, JSON.stringify(defaults));
     return defaults;

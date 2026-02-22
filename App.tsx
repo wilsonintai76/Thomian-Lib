@@ -17,6 +17,7 @@ import ProfileSettings from './components/ProfileSettings';
 import SystemNavbar from './components/layout/SystemNavbar';
 import MobileTaskBar from './components/layout/MobileTaskBar';
 import { mockGetActiveAlerts, mockResolveAlert, initializeNetwork, getNetworkStatus, mockCheckSession, mockLogout, mockGetMapConfig } from './services/mockApi';
+import { SYSTEM_THEME_CONFIG } from './utils';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<ViewMode>('KIOSK');
@@ -29,7 +30,13 @@ const App: React.FC = () => {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
-  const prevAlertCountRef = useRef(0);
+  const theme = mapConfig?.theme || 'EMERALD';
+  const styles = SYSTEM_THEME_CONFIG[theme];
+
+  const refreshConfig = async () => {
+      const cfg = await mockGetMapConfig();
+      setMapConfig(cfg);
+  };
 
   useEffect(() => {
       const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -41,8 +48,8 @@ const App: React.FC = () => {
       const init = async () => {
           await initializeNetwork();
           setNetworkStatus(getNetworkStatus() as any);
-          const [user, cfg] = await Promise.all([mockCheckSession(), mockGetMapConfig()]);
-          setMapConfig(cfg);
+          const user = await mockCheckSession();
+          await refreshConfig();
           if (user) {
               setCurrentUser(user);
               setMode('ADMIN');
@@ -57,7 +64,6 @@ const App: React.FC = () => {
           if (mode === 'ADMIN') {
               mockGetActiveAlerts().then(currentAlerts => {
                   setAlerts(currentAlerts);
-                  prevAlertCountRef.current = currentAlerts.length;
               });
           }
       }, 3000);
@@ -84,7 +90,7 @@ const App: React.FC = () => {
 
   const allTabs = [
     { id: 'CIRCULATION', label: 'Circulation', short: 'Loans', icon: ArrowLeftRight, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
-    { id: 'CATALOG', label: 'Inventory', short: 'Assets', icon: BookOpen, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
+    { id: 'CATALOG', label: 'Catalog', short: 'Assets', icon: BookOpen, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'PATRONS', label: 'Patrons', short: 'Users', icon: Users, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'REPORTS', label: 'Analytics', short: 'Data', icon: TrendingUp, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'MAP', label: 'Map Layout', short: 'Map', icon: MapPin, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
@@ -97,7 +103,7 @@ const App: React.FC = () => {
   const filteredTabs = currentUser ? allTabs.filter(tab => tab.roles.includes(currentUser.role)) : [];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className={`min-h-screen ${styles.globalBg} ${styles.bodyText} flex flex-col font-sans transition-colors duration-500`}>
       <SystemNavbar 
         mode={mode}
         setMode={setMode}
@@ -113,15 +119,19 @@ const App: React.FC = () => {
       />
 
       {!isMobile && mode === 'ADMIN' && currentUser && (
-        <div className="bg-[#0f172a] text-white border-t border-slate-800 z-40 sticky top-20 print:hidden">
-            <div className="max-w-[1800px] mx-auto px-6 flex justify-center h-12">
+        <div className={`${styles.subnavBg} border-b ${styles.navBorder} z-40 sticky top-16 lg:top-20 print:hidden shadow-sm`}>
+            <div className="max-w-[1800px] mx-auto px-6 flex justify-center h-14">
                 {filteredTabs.map(tab => (
                     <button 
                         key={tab.id}
                         onClick={() => setAdminTab(tab.id as AdminTab)}
-                        className={`px-4 py-2 flex items-center gap-2 uppercase tracking-widest text-[10px] font-black transition-all ${adminTab === tab.id ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-6 py-2 flex items-center gap-2.5 uppercase tracking-widest text-[10px] font-black transition-all relative group h-full ${adminTab === tab.id ? styles.subnavActive : `${styles.subnavIdle} hover:text-slate-800`}`}
                     >
-                        <tab.icon className="h-4 w-4" /> {tab.label}
+                        <tab.icon className={`h-4 w-4 transition-transform ${adminTab === tab.id ? 'scale-110' : 'group-hover:scale-110'}`} /> 
+                        {tab.label}
+                        {adminTab === tab.id && (
+                            <div className={`absolute bottom-0 left-0 right-0 h-1 ${styles.subnavIndicator} rounded-t-full`}></div>
+                        )}
                     </button>
                 ))}
             </div>
@@ -130,50 +140,21 @@ const App: React.FC = () => {
 
       {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} onLoginSuccess={handleLoginSuccess} />}
       
-      {showCredentialsModal && currentUser && (
-          <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
-              <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-fade-in-up">
-                  <div className="bg-slate-900 p-8 text-white text-center relative">
-                      <button onClick={() => setShowCredentialsModal(false)} className="absolute top-6 right-6 text-white/40 hover:text-white"><X className="h-6 w-6" /></button>
-                      <IdCard className="h-12 w-12 mx-auto mb-4 text-blue-400" />
-                      <h3 className="text-xl font-black uppercase tracking-tight">Active Credentials</h3>
-                  </div>
-                  <div className="p-10 space-y-6">
-                      <div className="space-y-4">
-                          <div>
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">User Identity</p>
-                              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                  <User className="h-4 w-4 text-blue-500" />
-                                  <span className="font-mono text-sm font-bold text-slate-700">{currentUser.username}</span>
-                              </div>
-                          </div>
-                          <div>
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Authority Level</p>
-                              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                                  <span className="font-black text-xs uppercase text-slate-700">{currentUser.role}</span>
-                              </div>
-                          </div>
-                      </div>
-                      <button onClick={() => setShowCredentialsModal(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Secure View</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
       <main className="flex-1 overflow-hidden relative">
         {mode === 'KIOSK' ? <KioskHome /> : (
           <div className={`h-full overflow-y-auto scrollbar-thin ${isMobile ? 'pb-24' : ''}`}>
-            {adminTab === 'CIRCULATION' && <CirculationDesk />}
-            {adminTab === 'CATALOG' && <CatalogingDesk />}
-            {adminTab === 'PATRONS' && <PatronDashboard />}
-            {adminTab === 'REPORTS' && <ReportsDashboard />}
-            {adminTab === 'MATRIX' && <CirculationMatrix />}
-            {adminTab === 'MAP' && <MapCreator />}
-            {adminTab === 'CALENDAR' && <EventCalendar />}
-            {adminTab === 'SETTINGS' && <SystemSettings />}
-            {adminTab === 'HELP' && <HelpGuide />}
-            {adminTab === 'PROFILE' && currentUser && <ProfileSettings user={currentUser} onUpdate={setCurrentUser} />}
+            <div className={styles.headingText}>
+                {adminTab === 'CIRCULATION' && <CirculationDesk />}
+                {adminTab === 'CATALOG' && <CatalogingDesk />}
+                {adminTab === 'PATRONS' && <PatronDashboard onRefreshConfig={refreshConfig} />}
+                {adminTab === 'REPORTS' && <ReportsDashboard />}
+                {adminTab === 'MATRIX' && <CirculationMatrix />}
+                {adminTab === 'MAP' && <MapCreator onRefreshConfig={refreshConfig} />}
+                {adminTab === 'CALENDAR' && <EventCalendar />}
+                {adminTab === 'SETTINGS' && <SystemSettings onRefreshConfig={refreshConfig} />}
+                {adminTab === 'HELP' && <HelpGuide />}
+                {adminTab === 'PROFILE' && currentUser && <ProfileSettings user={currentUser} onUpdate={setCurrentUser} />}
+            </div>
           </div>
         )}
       </main>
@@ -183,14 +164,15 @@ const App: React.FC = () => {
       )}
 
       {mode === 'ADMIN' && !isMobile && (
-        <div className="flex bg-slate-900 border-t border-slate-800 px-8 py-3 text-[9px] text-slate-500 justify-between items-center font-black uppercase tracking-widest shrink-0 print:hidden">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-500 shadow-lg"></div>Core Status: <span className="text-emerald-400">ONLINE</span></span>
-            <div className="h-4 w-px bg-slate-800"></div>
-            <span className="flex items-center gap-2">{networkStatus.isLan ? <Wifi className="h-3 w-3 text-emerald-500" /> : <Cloud className="h-3 w-3 text-blue-500" />}Mode: <span className={networkStatus.isLan ? 'text-emerald-400' : 'text-blue-400'}>{networkStatus.mode}</span></span>
+        <div className="flex bg-white border-t border-slate-200 px-8 py-4 text-[9px] text-slate-500 justify-between items-center font-black uppercase tracking-[0.25em] shrink-0 print:hidden shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center gap-8">
+            <span className="flex items-center gap-2.5"><div className="h-2 w-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-200"></div>Core Status: <span className="text-slate-800">Synchronized</span></span>
+            <div className="h-4 w-px bg-slate-100"></div>
+            <span className="flex items-center gap-2.5">{networkStatus.isLan ? <Wifi className="h-3.5 w-3.5 text-emerald-500" /> : <Cloud className="h-3.5 w-3.5 text-slate-400" />}Sync Channel: <span className={networkStatus.isLan ? 'text-emerald-600' : 'text-slate-400'}>{networkStatus.mode}</span></span>
           </div>
-          <div className="flex gap-8">
-             <span className="flex items-center gap-2"><ScanLine className="h-3 w-3" /> HID Input Sync</span>
+          <div className="flex gap-10">
+             <span className="flex items-center gap-2.5 text-slate-400 hover:text-slate-800 transition-colors cursor-help"><ScanLine className="h-3.5 w-3.5" /> Peripheral Interface Ready</span>
+             <span className="text-[8px] opacity-40 font-bold">Rel 4.8.2</span>
           </div>
         </div>
       )}
