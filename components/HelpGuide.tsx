@@ -15,6 +15,28 @@ const HelpGuide: React.FC = () => {
 
   const topics: HelpTopic[] = [
     {
+      id: 'DASHBOARD',
+      title: 'Librarian Dashboard',
+      icon: LayoutGrid,
+      description: 'Overview of system health and live activity.',
+      content: (
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+               Mission Control <Zap className="h-5 w-5 text-amber-500" />
+            </h3>
+            <p className="text-slate-600 mb-4">The Librarian Dashboard is your primary command center. It provides real-time insights into the library's operations.</p>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                <li><strong>Live Circulation Stream:</strong> Monitor every loan and return as it happens.</li>
+                <li><strong>System Health:</strong> Real-time status of your database, printers, and scanners.</li>
+                <li><strong>Quick Actions:</strong> Jump directly to Check-Out, Returns, or Cataloging from the dashboard.</li>
+                <li><strong>KPIs:</strong> Track active loans, overdue risks, and total collection value at a glance.</li>
+            </ul>
+          </section>
+        </div>
+      )
+    },
+    {
       id: 'CIRCULATION',
       title: 'Circulation Desk',
       icon: ArrowLeftRight,
@@ -74,6 +96,34 @@ const HelpGuide: React.FC = () => {
       )
     },
     {
+      id: 'PATRONS',
+      title: 'Patron Management',
+      icon: UserCheck,
+      description: 'Registration, slips, and identity management.',
+      content: (
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+               Registration Slips <Printer className="h-5 w-5 text-blue-600" />
+            </h3>
+            <p className="text-slate-600 mb-4">When a new patron is registered, the system automatically generates a unique Patron ID and a secure 4-digit PIN.</p>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-slate-600">
+                <li><strong>Auto-Generation:</strong> The Patron ID is generated based on the current year and a random sequence.</li>
+                <li><strong>Slip Printing:</strong> A registration slip containing the ID and PIN is displayed immediately after registration. This should be printed and given to the patron.</li>
+                <li><strong>PIN Management:</strong> Patrons can change their PIN later using the Kiosk Profile settings. Librarians can also reset it from the Patron Dashboard.</li>
+            </ul>
+          </section>
+          <section>
+            <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+               Undo Deletions <RefreshCcw className="h-5 w-5 text-amber-500" />
+            </h3>
+            <p className="text-slate-600 mb-4">Accidental deletions of patron records can be reversed within a 5-second window.</p>
+            <p className="text-sm text-slate-600">Look for the "Undo" notification bar at the bottom of the screen immediately after deleting a patron.</p>
+          </section>
+        </div>
+      )
+    },
+    {
       id: 'CATALOG',
       title: 'Professional Cataloging',
       icon: BookOpen,
@@ -108,6 +158,13 @@ const HelpGuide: React.FC = () => {
                 </div>
               </li>
             </ul>
+          </section>
+          <section>
+            <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+               Undo Deletions <RefreshCcw className="h-5 w-5 text-amber-500" />
+            </h3>
+            <p className="text-slate-600 mb-4">Accidental deletions of catalog records can be reversed within a 5-second window.</p>
+            <p className="text-sm text-slate-600">Look for the "Undo" notification bar at the bottom of the screen immediately after deleting a book.</p>
           </section>
         </div>
       )

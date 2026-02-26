@@ -1,6 +1,6 @@
 
 export type ViewMode = 'KIOSK' | 'ADMIN';
-export type AdminTab = 'CIRCULATION' | 'CATALOG' | 'PATRONS' | 'MATRIX' | 'MAP' | 'CALENDAR' | 'REPORTS' | 'HELP' | 'SETTINGS' | 'PROFILE';
+export type AdminTab = 'DASHBOARD' | 'CIRCULATION' | 'CATALOG' | 'PATRONS' | 'MATRIX' | 'MAP' | 'CALENDAR' | 'REPORTS' | 'HELP' | 'SETTINGS' | 'PROFILE';
 
 export type PatronGroup = 'STUDENT' | 'TEACHER' | 'LIBRARIAN' | 'ADMINISTRATOR';
 export type SystemTheme = 'EMERALD' | 'PURPLE' | 'SKY' | 'MIDNIGHT' | 'WHITE';

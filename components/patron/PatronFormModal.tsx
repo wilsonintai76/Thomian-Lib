@@ -44,7 +44,7 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
             setFormData(initialData);
         } else {
             setFormData({ 
-                student_id: '', 
+                student_id: generatePatronId(), 
                 full_name: '', 
                 patron_group: 'STUDENT', 
                 class_name: '', 
@@ -60,6 +60,12 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
 
     function generateRandomPin() {
         return Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    function generatePatronId() {
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        return `ST-${year}-${randomNum}`;
     }
 
     const handleGeneratePin = () => {
@@ -233,14 +239,26 @@ const PatronFormModal: React.FC<PatronFormModalProps> = ({ isOpen, onClose, onSa
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-1">
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Unique Patron ID (Barcode)</label>
-                                <input 
-                                    type="text" 
-                                    value={formData.student_id}
-                                    disabled={!!initialData}
-                                    onChange={(e) => setFormData({...formData, student_id: e.target.value.toUpperCase()})}
-                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-mono font-bold text-slate-700 outline-none focus:border-blue-500 disabled:opacity-50"
-                                    placeholder="ST-2024-XXX"
-                                />
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={formData.student_id}
+                                        disabled={!!initialData}
+                                        onChange={(e) => setFormData({...formData, student_id: e.target.value.toUpperCase()})}
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-mono font-bold text-slate-700 outline-none focus:border-blue-500 disabled:opacity-50"
+                                        placeholder="ST-2024-XXX"
+                                    />
+                                    {!initialData && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setFormData({...formData, student_id: generatePatronId()})}
+                                            title="Auto-Generate ID"
+                                            className="px-4 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-200 transition-all shrink-0"
+                                        >
+                                            <RefreshCw className="h-5 w-5" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="md:col-span-1">
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Security PIN (4-Digits)</label>

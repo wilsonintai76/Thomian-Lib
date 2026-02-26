@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, User, Key, X, IdCard, Wifi, Cloud, ScanLine, ArrowLeftRight, BookOpen, Users, TrendingUp, MapPin, Calendar, Settings, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, User, Key, X, IdCard, Wifi, Cloud, ScanLine, ArrowLeftRight, BookOpen, Users, TrendingUp, MapPin, Calendar, Settings, HelpCircle } from 'lucide-react';
 import { ViewMode, AdminTab, SystemAlert, AuthUser, MapConfig } from './types';
 import KioskHome from './components/KioskHome';
 import CatalogingDesk from './components/CatalogingDesk';
 import CirculationMatrix from './components/CirculationMatrix';
 import PatronDashboard from './components/PatronDashboard';
+import LibrarianDashboard from './components/LibrarianDashboard';
 import CirculationDesk from './components/CirculationDesk';
 import EventCalendar from './components/EventCalendar';
 import ReportsDashboard from './components/ReportsDashboard';
@@ -21,7 +22,7 @@ import { SYSTEM_THEME_CONFIG } from './utils';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<ViewMode>('KIOSK');
-  const [adminTab, setAdminTab] = useState<AdminTab>('CIRCULATION');
+  const [adminTab, setAdminTab] = useState<AdminTab>('DASHBOARD');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [networkStatus, setNetworkStatus] = useState({ mode: 'CLOUD', url: '', isLan: false });
@@ -79,7 +80,7 @@ const App: React.FC = () => {
     setCurrentUser(user);
     setIsLoginOpen(false);
     setMode('ADMIN');
-    setAdminTab(isMobile ? 'CATALOG' : 'CIRCULATION');
+    setAdminTab(isMobile ? 'CATALOG' : 'DASHBOARD');
   };
 
   const handleLogout = () => {
@@ -89,6 +90,7 @@ const App: React.FC = () => {
   };
 
   const allTabs = [
+    { id: 'DASHBOARD', label: 'Dashboard', short: 'Home', icon: LayoutDashboard, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'CIRCULATION', label: 'Circulation', short: 'Loans', icon: ArrowLeftRight, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'CATALOG', label: 'Catalog', short: 'Assets', icon: BookOpen, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
     { id: 'PATRONS', label: 'Patrons', short: 'Users', icon: Users, roles: ['LIBRARIAN', 'ADMINISTRATOR'] },
@@ -144,6 +146,7 @@ const App: React.FC = () => {
         {mode === 'KIOSK' ? <KioskHome /> : (
           <div className={`h-full overflow-y-auto scrollbar-thin ${isMobile ? 'pb-24' : ''}`}>
             <div className={styles.headingText}>
+                {adminTab === 'DASHBOARD' && <LibrarianDashboard onSelectTab={setAdminTab} />}
                 {adminTab === 'CIRCULATION' && <CirculationDesk />}
                 {adminTab === 'CATALOG' && <CatalogingDesk />}
                 {adminTab === 'PATRONS' && <PatronDashboard onRefreshConfig={refreshConfig} />}

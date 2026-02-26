@@ -49,15 +49,29 @@ server {
 ```
 
 ### Environment Variables (`.env`)
-Ensure your backend `.env` file includes the trusted origins for Cloudflare:
+For a **Desktop/On-Premise** deployment, use Local Storage (default). This is faster and works without internet.
 
 ```bash
+# Core Configuration
 ALLOWED_HOSTS=library.stthomas.edu,localhost
 CSRF_TRUSTED_ORIGINS=https://library.stthomas.edu
 DB_NAME=thomian_db
 DB_USER=postgres
 DB_PASSWORD=secret
+
+# Optional: Cloudflare R2 (Only if you want off-site storage)
+# Leave USE_S3=False to use the local hard drive for images/assets.
+USE_S3=False
 ```
+
+### Default Credentials (Mock/Demo)
+The system includes two pre-configured accounts for initial access:
+- **Administrator:** `admin` / `admin123`
+- **Librarian:** `librarian` / `lib123`
+
+### Data Backup (Crucial)
+Since you are using **Local Storage**, all book covers and patron photos live in the `/media` folder on your desktop.
+**Recommendation:** Set up a nightly cron job to sync this folder to Google Drive or a USB drive.
 
 ---
 
@@ -77,10 +91,11 @@ The **Mobile Scanner** and **AI Vision Uploads** strictly require a Secure Conte
 
 ## 4. Hardware Configuration
 
-### Zebra Printer Setup (Labels & Cards)
-The system generates two types of ZPL streams:
+### Zebra Printer Setup (Labels & Cards & Slips)
+The system generates three types of print streams:
 1.  **Spine Labels:** Optimized for 1.5" x 1" continuous or die-cut labels.
 2.  **Patron IDs:** Optimized for CR80 standard PVC cards (3.375" x 2.125").
+3.  **Registration Slips:** Standard receipt printer format for initial patron registration (includes ID and generated PIN).
 
 **Printer Connection:**
 -   Ensure the printer is reachable on the local network.

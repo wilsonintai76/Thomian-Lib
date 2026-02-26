@@ -428,7 +428,11 @@ const KioskHome: React.FC = () => {
                     <div key={book.id} onClick={() => selectBook(book)} className={`p-4 md:p-6 rounded-2xl cursor-pointer border-2 transition-all bg-white flex gap-6 ${selectedBook?.id === book.id ? 'border-blue-600 shadow-xl' : 'border-slate-200 hover:border-slate-300'}`}>
                         <div className="shrink-0 w-24 h-32 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">{book.cover_url && <img src={book.cover_url} className="w-full h-full object-cover" />}</div>
                         <div className="flex-1 flex flex-col justify-between">
-                            <div><h3 className="font-black text-xl text-slate-900 uppercase tracking-tight leading-none mb-1">{book.title}</h3><p className="text-slate-500 font-bold uppercase text-xs tracking-widest">{book.author}</p></div>
+                            <div>
+                                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight leading-none mb-1">{book.title}</h3>
+                                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mb-2">{book.author}</p>
+                                {book.summary && <p className="text-sm text-slate-600 line-clamp-2 mb-2">{book.summary}</p>}
+                            </div>
                             <div className="flex items-center gap-3"><span className="bg-slate-900 text-white px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest">DDC {book.ddc_code}</span><span className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest border ${book.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{book.status}</span></div>
                         </div>
                     </div>

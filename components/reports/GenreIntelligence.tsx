@@ -8,7 +8,7 @@ interface GenreIntelligenceProps {
 }
 
 const GenreIntelligence: React.FC<GenreIntelligenceProps> = ({ data, totalBooks }) => {
-    const sortedGenres = Object.entries(data).sort((a, b) => b[1].count - a[1].count);
+    const sortedGenres = Object.entries(data).sort((a, b) => (b[1] as {count: number, loans: number}).count - (a[1] as {count: number, loans: number}).count);
 
     return (
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col h-full">
@@ -23,7 +23,8 @@ const GenreIntelligence: React.FC<GenreIntelligenceProps> = ({ data, totalBooks 
 
             <div className="space-y-6 flex-1 overflow-y-auto pr-2 scrollbar-thin">
                 {sortedGenres.map(([genre, stats]) => {
-                    const pct = (stats.count / totalBooks) * 100;
+                    const typedStats = stats as {count: number, loans: number};
+                    const pct = (typedStats.count / totalBooks) * 100;
                     return (
                         <div key={genre} className="group">
                             <div className="flex justify-between items-end mb-2">
@@ -31,14 +32,14 @@ const GenreIntelligence: React.FC<GenreIntelligenceProps> = ({ data, totalBooks 
                                     <span className="text-xs font-black text-slate-700 uppercase tracking-tight block">{genre}</span>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <Book className="h-2.5 w-2.5 text-slate-300" />
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{stats.count} Assets</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{typedStats.count} Assets</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <span className="text-xs font-black text-sky-600 font-mono">{pct.toFixed(1)}%</span>
                                     <div className="flex items-center gap-1 mt-0.5 justify-end">
                                         <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
-                                        <span className="text-[9px] font-black text-emerald-600 uppercase">{stats.loans} Checkouts</span>
+                                        <span className="text-[9px] font-black text-emerald-600 uppercase">{typedStats.loans} Checkouts</span>
                                     </div>
                                 </div>
                             </div>

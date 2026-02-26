@@ -2,6 +2,8 @@
 import { Book, Patron, Transaction, AuthUser, MapConfig, MapLevel, ShelfDefinition, LibraryEvent, SystemStats, OverdueReportItem, SystemAlert, CirculationRule, CheckInResult, CheckoutResult, LibraryClass } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const STORAGE_KEY_BOOKS = "thomian_books";
 const STORAGE_KEY_TRANSACTIONS = "thomian_transactions";
 const STORAGE_KEY_PATRONS = "thomian_patrons";
@@ -17,8 +19,8 @@ const STORAGE_KEY_LAN_URL = "thomian_lan_url";
 const SCHOOL_CREST_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="50%" stop-color="black"/><stop offset="50%" stop-color="%23D6001C"/></linearGradient></defs><path d="M250 50Q125 70 50 50L50 280C50 400 250 480 250 480C250 480 450 400 450 280L450 50Q375 70 250 50Z" fill="url(%23g1)"/><g transform="translate(90,80) scale(0.6)"><path d="M50 100L10 100L20 40L50 0L80 40L90 100Z" fill="%23FFD700" stroke="white" stroke-width="2"/></g><g transform="translate(300,80) scale(0.6)"><path d="M10 30L80 30L100 10L110 20L90 40C90 60 70 70 40 70L20 70C10 70 0 60 10 30Z" fill="%23FFD700"/><circle cx="30" cy="15" r="10" fill="orange"/></g><g transform="translate(250,240) rotate(-30)"><rect x="-80" y="-10" width="160" height="20" fill="%23FFD700"/><rect x="60" y="-10" width="20" height="80" fill="%23FFD700"/></g><g transform="translate(20,430)"><path d="M20 50Q230 130 440 50L440 90Q230 170 20 90Z" fill="%23FFD700" stroke="black" stroke-width="2"/><text x="230" y="105" font-family="sans-serif" font-weight="900" font-size="30" text-anchor="middle" fill="black">AIM HIGHER</text></g></svg>`;
 
 const INITIAL_BOOKS: Book[] = [
-    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: 'FIC', classification: 'Fiction', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', value: 15.99, language: 'English', pages: 180, vendor: 'Scribner', loan_count: 45, publisher: 'Scribner', pub_year: '2004', format: 'PAPERBACK', created_at: new Date().toISOString() },
-    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', classification: 'Science', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', value: 85.00, publisher: 'University Science Books', pub_year: '2005', format: 'HARDCOVER', edition: '2nd', pages: 450, loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'B-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9780743273565', barcode_id: '3001', ddc_code: 'FIC', classification: 'Fiction', shelf_location: 'Shelf C', status: 'AVAILABLE', material_type: 'REGULAR', value: 15.99, language: 'English', pages: 180, vendor: 'Scribner', loan_count: 45, publisher: 'Scribner', pub_year: '2004', format: 'PAPERBACK', created_at: new Date().toISOString(), summary: 'A novel set in the Jazz Age that tells the tragic story of Jay Gatsby, a self-made millionaire, and his pursuit of Daisy Buchanan, a wealthy young woman whom he loved in his youth.' },
+    { id: 'B-2', title: 'Introduction to Physics', author: 'John R. Taylor', isbn: '9781891389603', barcode_id: '1001', ddc_code: '530', classification: 'Science', shelf_location: 'Shelf B', status: 'LOANED', material_type: 'REGULAR', value: 85.00, publisher: 'University Science Books', pub_year: '2005', format: 'HARDCOVER', edition: '2nd', pages: 450, loan_count: 12, created_at: new Date(Date.now() - 86400000).toISOString(), summary: 'A comprehensive introduction to the fundamental concepts of physics, covering mechanics, thermodynamics, electromagnetism, and modern physics.' },
 ];
 
 const INITIAL_RULES: CirculationRule[] = [
@@ -67,6 +69,12 @@ export const mockDeleteBook = async (id: string): Promise<void> => {
     const books = await mockGetBooks();
     const filtered = books.filter(b => b.id !== id);
     localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(filtered));
+};
+
+export const mockRestoreBook = async (book: Book): Promise<void> => {
+    const books = await mockGetBooks();
+    books.unshift(book);
+    localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
 };
 
 export const mockGetClasses = async (): Promise<LibraryClass[]> => {
@@ -234,6 +242,12 @@ export const mockDeletePatron = async (id: string): Promise<void> => {
     localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(filtered));
 };
 
+export const mockRestorePatron = async (patron: Patron): Promise<void> => {
+    const patrons = await mockGetPatrons();
+    patrons.unshift(patron);
+    localStorage.setItem(STORAGE_KEY_PATRONS, JSON.stringify(patrons));
+};
+
 export const mockSearchBooks = async (query: string): Promise<Book[]> => {
     const books = await mockGetBooks();
     const q = query.toLowerCase();
@@ -348,7 +362,8 @@ export const simulateCatalogWaterfall = async (isbn: string, onUpdate: (source: 
         status: 'AVAILABLE', 
         value: 25.00, 
         language: 'English', 
-        classification: 'Technology' 
+        classification: 'Technology',
+        summary: 'A foundational text outlining the principles and practices of modern library organization, including the introduction of the Dewey Decimal Classification system.'
     };
 };
 
@@ -417,6 +432,18 @@ export const mockCheckoutBooks = async (patronId: string, barcodes: string[]): P
     return { success: true, message: "Checkout processed successfully", errors: [] };
 };
 
+export const mockGetRecentActivity = async () => {
+    await delay(600);
+    return [
+        { type: 'LOAN', patronName: 'Alexander Thom', bookTitle: 'The Great Gatsby', time: '2m ago', librarian: 'Admin' },
+        { type: 'RETURN', patronName: 'Sophia Chen', bookTitle: 'Physics: A Modern Approach', time: '15m ago', librarian: 'Admin' },
+        { type: 'LOAN', patronName: 'Marcus Wright', bookTitle: '1984', time: '42m ago', librarian: 'Admin' },
+        { type: 'RETURN', patronName: 'Emma Wilson', bookTitle: 'The Hobbit', time: '1h ago', librarian: 'Admin' },
+        { type: 'LOAN', patronName: 'David Miller', bookTitle: 'Clean Code', time: '2h ago', librarian: 'Admin' },
+        { type: 'LOAN', patronName: 'Sarah Jenkins', bookTitle: 'Design Patterns', time: '3h ago', librarian: 'Admin' },
+    ];
+};
+
 export const mockGetSystemStats = async (): Promise<SystemStats> => {
     const books = await mockGetBooks();
     const patrons = await mockGetPatrons();
@@ -470,6 +497,12 @@ export const mockGetOverdueItems = async (): Promise<OverdueReportItem[]> => [
 export const mockLogin = async (username: string, password: string): Promise<AuthUser | null> => {
     if (username === 'admin' && password === 'admin123') {
         const user: AuthUser = { id: 'U-1', username: 'admin', full_name: 'Admin', role: 'ADMINISTRATOR', avatar_color: 'bg-slate-900' };
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+        localStorage.setItem(STORAGE_KEY_TOKEN, "token");
+        return user;
+    }
+    if (username === 'librarian' && password === 'lib123') {
+        const user: AuthUser = { id: 'U-2', username: 'librarian', full_name: 'Librarian', role: 'LIBRARIAN', avatar_color: 'bg-sky-600' };
         localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
         localStorage.setItem(STORAGE_KEY_TOKEN, "token");
         return user;

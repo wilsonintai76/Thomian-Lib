@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Database, Loader2, Plus, List, Printer, Eye, X, PackageSearch, Tag, Edit3, Calendar, MapPin, Trash2, ShieldCheck, Sparkles, BookOpen, Keyboard, LayoutGrid, Settings2, Building, DollarSign } from 'lucide-react';
-import { simulateCatalogWaterfall, mockSearchBooks, mockAddBook, mockUpdateBook, mockPrintBookLabel, mockBulkPrintLabels, mockDeleteBook } from '../services/mockApi';
+import { simulateCatalogWaterfall, mockSearchBooks, mockAddBook, mockUpdateBook, mockPrintBookLabel, mockBulkPrintLabels, mockDeleteBook, mockRestoreBook } from '../services/mockApi';
 import { Book as BookType } from '../types';
 import MobileScanner from './MobileScanner';
 import BookLabel from './BookLabel';
@@ -33,6 +33,7 @@ const CatalogingDesk: React.FC<{ initialView?: 'ADD' | 'LIST' | 'STOCKTAKE' }> =
   const [inventory, setInventory] = useState<BookType[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingList, setIsLoadingList] = useState(false);
+  const [undoAction, setUndoAction] = useState<{ book: BookType, timeout: NodeJS.Timeout } | null>(null);
   
   // Sheet Print Config
   const [printLayout, setPrintLayout] = useState<'SINGLE' | 'SHEET'>('SHEET');
@@ -96,9 +97,28 @@ const CatalogingDesk: React.FC<{ initialView?: 'ADD' | 'LIST' | 'STOCKTAKE' }> =
 
   const handleDelete = async (id: string) => {
       if (!confirm("Are you sure? This will remove the item from active holdings. All loan history will be archived.")) return;
+      
+      const bookToDelete = inventory.find(b => b.id === id);
+      if (!bookToDelete) return;
+
       await mockDeleteBook(id);
       setInventory(prev => prev.filter(b => b.id !== id));
-      alert("Item de-accessioned.");
+      
+      if (undoAction) clearTimeout(undoAction.timeout);
+      
+      const timeout = setTimeout(() => {
+          setUndoAction(null);
+      }, 5000);
+      
+      setUndoAction({ book: bookToDelete, timeout });
+  };
+
+  const handleUndoDelete = async () => {
+      if (!undoAction) return;
+      clearTimeout(undoAction.timeout);
+      await mockRestoreBook(undoAction.book);
+      setInventory(prev => [undoAction.book, ...prev]);
+      setUndoAction(null);
   };
 
   const handleEditBook = (book: BookType) => { 
@@ -137,6 +157,13 @@ const CatalogingDesk: React.FC<{ initialView?: 'ADD' | 'LIST' | 'STOCKTAKE' }> =
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto h-full flex flex-col relative pb-32">
+      {undoAction && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[100] animate-fade-in-up">
+              <span className="text-sm font-medium">Item "{undoAction.book.title}" deleted.</span>
+              <button onClick={handleUndoDelete} className="text-blue-400 font-bold uppercase tracking-widest text-xs hover:text-blue-300">Undo</button>
+              <button onClick={() => { clearTimeout(undoAction.timeout); setUndoAction(null); }} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+          </div>
+      )}
       {isScannerOpen && <MobileScanner onScan={(text) => { setIsScannerOpen(false); setIsbn(text); handleCatalogSearch(); }} onClose={() => setIsScannerOpen(false)} />}
       
       {bulkPreviewBooks && (

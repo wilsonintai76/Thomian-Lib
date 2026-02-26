@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Users, Search, Loader2, Banknote, History, Download, Archive, UserPlus, Building2, RefreshCw, Edit, UserMinus, Mail, Phone, GraduationCap, IdCard, Printer, ShieldCheck, Filter, ChevronDown } from 'lucide-react';
+import { Users, Search, Loader2, Banknote, History, Download, Archive, UserPlus, Building2, RefreshCw, Edit, UserMinus, Mail, Phone, GraduationCap, IdCard, Printer, ShieldCheck, Filter, ChevronDown, X } from 'lucide-react';
 import { Patron, Transaction, AuthUser, MapConfig, LibraryClass } from '../types';
-import { mockGetPatrons, mockUpdatePatron, mockGetMapConfig, mockRecordTransaction, mockGetTransactionsByPatron, mockCheckSession, mockPrintPatronCard, mockBulkPrintPatrons, mockAddPatron, mockDeletePatron, mockGetClasses } from '../services/mockApi';
+import { mockGetPatrons, mockUpdatePatron, mockGetMapConfig, mockRecordTransaction, mockGetTransactionsByPatron, mockCheckSession, mockPrintPatronCard, mockBulkPrintPatrons, mockAddPatron, mockDeletePatron, mockGetClasses, mockRestorePatron } from '../services/mockApi';
 import { exportToCSV } from '../utils';
 import ReceiptModal from './ReceiptModal';
 import PatronCard from './PatronCard';
@@ -10,6 +10,7 @@ import LedgerInterface from './patron/LedgerInterface';
 import PatronFormModal from './patron/PatronFormModal';
 import ClassManager from './patron/ClassManager';
 import RollOverWizard from './patron/RollOverWizard';
+import RegistrationSlipModal from './patron/RegistrationSlipModal';
 
 interface PatronDashboardProps {
     onRefreshConfig?: () => void;
@@ -38,8 +39,10 @@ const PatronDashboard: React.FC<PatronDashboardProps> = ({ onRefreshConfig }) =>
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [lastTxn, setLastTxn] = useState<Transaction | null>(null);
+  const [undoAction, setUndoAction] = useState<{ patron: Patron, timeout: NodeJS.Timeout } | null>(null);
 
   const [bulkPreviewPatrons, setBulkPreviewPatrons] = useState<Patron[] | null>(null);
+  const [newPatronSlip, setNewPatronSlip] = useState<Patron | null>(null);
 
   useEffect(() => { 
       loadInitialData(); 
@@ -73,7 +76,7 @@ const PatronDashboard: React.FC<PatronDashboardProps> = ({ onRefreshConfig }) =>
           } else {
               const created = await mockAddPatron(patronData as Patron);
               setPatrons(prev => [created, ...prev]);
-              alert("New patron registered.");
+              setNewPatronSlip(created);
           }
           setIsFormOpen(false);
           setEditingPatron(null);
@@ -86,9 +89,28 @@ const PatronDashboard: React.FC<PatronDashboardProps> = ({ onRefreshConfig }) =>
 
   const handleDeletePatron = async (id: string) => {
       if (!confirm("Are you sure? This will permanently remove the patron.")) return;
+      
+      const patronToDelete = patrons.find(p => p.student_id === id);
+      if (!patronToDelete) return;
+
       await mockDeletePatron(id);
       setPatrons(prev => prev.filter(p => p.student_id !== id));
-      alert("Patron deleted.");
+      
+      if (undoAction) clearTimeout(undoAction.timeout);
+      
+      const timeout = setTimeout(() => {
+          setUndoAction(null);
+      }, 5000);
+      
+      setUndoAction({ patron: patronToDelete, timeout });
+  };
+
+  const handleUndoDelete = async () => {
+      if (!undoAction) return;
+      clearTimeout(undoAction.timeout);
+      await mockRestorePatron(undoAction.patron);
+      setPatrons(prev => [undoAction.patron, ...prev]);
+      setUndoAction(null);
   };
 
   const handleArchivePatron = async (id: string) => {
@@ -146,6 +168,13 @@ const PatronDashboard: React.FC<PatronDashboardProps> = ({ onRefreshConfig }) =>
 
   return (
     <div className="p-6 md:p-8 max-w-[1600px] mx-auto h-full flex flex-col relative pb-32">
+      {undoAction && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[100] animate-fade-in-up">
+              <span className="text-sm font-medium">Patron "{undoAction.patron.full_name}" deleted.</span>
+              <button onClick={handleUndoDelete} className="text-sky-400 font-bold uppercase tracking-widest text-xs hover:text-sky-300">Undo</button>
+              <button onClick={() => { clearTimeout(undoAction.timeout); setUndoAction(null); }} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+          </div>
+      )}
       {lastTxn && activeLedgerPatron && <ReceiptModal transaction={lastTxn} patron={activeLedgerPatron} config={mapConfig} onClose={() => setLastTxn(null)} />}
       
       <PatronFormModal 
@@ -155,6 +184,13 @@ const PatronDashboard: React.FC<PatronDashboardProps> = ({ onRefreshConfig }) =>
           initialData={editingPatron}
           isSaving={isSaving}
       />
+
+      {newPatronSlip && (
+          <RegistrationSlipModal 
+              patron={newPatronSlip} 
+              onClose={() => setNewPatronSlip(null)} 
+          />
+      )}
 
       {isClassManagerOpen && (
         <ClassManager 
